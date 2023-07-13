@@ -3,7 +3,7 @@ enum SourceTableFormat {
   CSV = "csv"
 }
 
-enum DataType {
+export enum DataType {
   CATEGORICAL = "categorical",
   NUMERICAL = "numerical"
 }
@@ -29,7 +29,7 @@ export interface AttrInfoUnit {
 
 export type AttrInfo = AttrInfoUnit[]
 
-// block
+// Block
 enum Position {
   EMBEDDED = "embedded",
   LEFT = "left",
@@ -87,8 +87,8 @@ export interface HeaderBlock {
 
 export interface CellBlock {
   attrName: string;
-  rowParentId: string;
-  columnParentId: string;
+  rowParentId?: string;
+  columnParentId?: string;
   style?: string; 
 }
 
@@ -111,3 +111,5 @@ export interface SingleTable {
   attrInfo: AttrInfo; 
 }
 
+// function
+export const FUNC_SUM = "sum"

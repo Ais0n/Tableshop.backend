@@ -141,25 +141,30 @@ let spec4 = {
     attrName: "state",
     blockId: "3dca2581-a3c5-1fa2-edac-abc1c43123da",
     entityMerge: true,
+    expand: true,
     children: [{
       attrName: "year",
 			blockId: "1beaf109-f1f2-4cb3-acce-bca9b18275aa",
-      entityMerge: true,
+      // entityMerge: true,
     }, {
 			function: "sum",
 			blockId: "186f15a3-7e92-466d-9f8c-ef60bbe96768",
-      entityMerge: true,
+      // entityMerge: true,
 		}],
   }, {
     attrName: "test",
     blockId: "3dca2581-a3c5-1fa2-edac-abc1c51723da",
-    entityMerge: true,
+    entityMerge: false,
   }],
   columnHeader: undefined,
   cell: [{
 		attrName: "crime",
-		rowParentId: "...",
-		colParentId: "...",
+		rowParentId: "1beaf109-f1f2-4cb3-acce-bca9b18275aa",
+		colParentId: undefined,
+	}, {
+		attrName: "crime",
+		rowParentId: "186f15a3-7e92-466d-9f8c-ef60bbe96768",
+		colParentId: undefined,
 	}],
   attrInfo: [{
 		name: "state",

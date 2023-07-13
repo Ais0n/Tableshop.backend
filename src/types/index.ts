@@ -1,8 +1,9 @@
 import {
   SourceTable, SingleTable,  
-  AttrInfoUnit, AttrInfo,
+  AttrInfoUnit, AttrInfo, DataType,
   Key, BorderStyle, FontStyle, Border,
-  HeaderBlock, CellBlock, HeaderChannel, CellChannel, StyleClass
+  HeaderBlock, CellBlock, HeaderChannel, CellChannel, StyleClass,
+  FUNC_SUM
 } from "./data_source"
 import { CROSS_TABLE, ROW_TABLE, COLUM_TABLE, interCell } from "./data_intermediate";
 
@@ -13,9 +14,10 @@ interface Spec {
 
 export {
   Spec, SourceTable, SingleTable,
-  AttrInfoUnit, AttrInfo,
+  AttrInfoUnit, AttrInfo, DataType,
   Key, BorderStyle, FontStyle, Border,
   HeaderBlock, CellBlock, HeaderChannel, CellChannel, StyleClass,
+  FUNC_SUM,
   CROSS_TABLE, ROW_TABLE, COLUM_TABLE, 
   interCell
 }
