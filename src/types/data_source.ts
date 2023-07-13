@@ -1,49 +1,113 @@
-export interface DataSource {
-  name: string;
-  format?: DataSourceFormatEnum;
-  values?: CSVArray | JSONArray;
-}
-
-export enum DataSourceFormatEnum {
+enum SourceTableFormat {
   JSON = "json",
-  CSV = "csv",
+  CSV = "csv"
 }
 
-export enum DataType {
+enum DataType {
   CATEGORICAL = "categorical",
   NUMERICAL = "numerical"
 }
 
-export type CSVArray = any[][];
-export type JSONArray = object[];
+type CSVArray = any[][];
+type JSONArray = object[];
 
-export interface DataTableInterface {
+// Source Table
+export interface SourceTable {
   name: string;
-  attributes: DataTableAttribute[];
-  tuples: DataTableTuple[];
+  format?: SourceTableFormat;
+  values?: CSVArray | JSONArray;
 }
 
-export interface DataTableAttribute {
+// Specification
+
+// attr
+export interface AttrInfoUnit {
   name: string;
-  type: DataType;
+  dataType: DataType;
   values: string[] | number[];
 }
 
+export type AttrInfo = AttrInfoUnit[]
 
-export type DataTableTuple = any;
-
-export interface TargetTableSyntax {
-  rowHeader?: TargetTableChannel;
-  columnHeader?: TargetTableChannel;
-  cell?: TargetTableChannel;
+// block
+enum Position {
+  EMBEDDED = "embedded",
+  LEFT = "left",
+  RIGHT = "right",
+  TOP = "top",
+  BOTTOM = "bottom"
 }
 
-export type TargetTableChannel = TargetTableChannelUnit[];
-
-export interface TargetTableChannelUnit {
-  attr: DataTableAttribute;
-  children?: TargetTableChannelUnit[];
+enum Pattern {
+  ROMAN = "I",
+  NUMERICAL = "1",
+  ALPHABETIC = "A"
 }
 
-export type TargetTable = any[][];
+type Color = string
+
+export interface Key {
+  position: Position;
+  pattern: Pattern;
+  isInherited: boolean;
+}
+
+export interface BorderStyle {
+  color: Color;
+  isDouble: boolean;
+}
+
+export interface FontStyle {
+  fontSize: string;
+  fontWeight: string;
+}
+
+export interface Border {
+  border_top: null | BorderStyle;
+  border_bottom: null | BorderStyle;
+  border_left: null | BorderStyle;
+  border_right: null | BorderStyle;
+}
+
+export interface HeaderBlock {
+  attrName: string | undefined; // link to AttrInfoUnit name
+  function: string | undefined; // can not exist with attrName
+  blockId: string;
+  className?: string;
+  key?: Key;
+  entityMerge?: boolean;
+  gridMerge?: boolean;
+  expand?: boolean;
+  facet?: number;
+  blankLine?: boolean;
+  style?: string;
+  values?: string[] | number[];
+  children?: HeaderBlock[];
+}
+
+export interface CellBlock {
+  attrName: string;
+  rowParentId: string;
+  columnParentId: string;
+  style?: string; 
+}
+
+export type HeaderChannel = HeaderBlock[]
+export type CellChannel = CellBlock[]
+
+export interface StyleClass {
+  border: Border;
+  bgColor: Color;
+  indent: string;
+  font: FontStyle;
+  textAlign: string;
+}
+
+export interface SingleTable {
+  rowHeader?: HeaderChannel;
+  columnHeader?: HeaderChannel;
+  cell: CellChannel;
+  styles: StyleClass[];
+  attrInfo: AttrInfo; 
+}
 

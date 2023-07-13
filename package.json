@@ -6,7 +6,8 @@
   "scripts": {
     "start": "yarn run build && yarn run test",
     "test": "node example/test.js",
-    "build": "rollup --config"
+    "build": "rollup --config",
+    "debug": "npm run build && npm run test"
   },
   "files": [
     "dist"

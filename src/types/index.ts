@@ -1,36 +1,21 @@
 import {
-  DataSource,
-  DataType,
-  DataSourceFormatEnum,
-  CSVArray,
-  JSONArray,
-  DataTableInterface,
-  DataTableAttribute,
-  DataTableTuple,
-  TargetTableSyntax,
-  TargetTableChannel,
-  TargetTableChannelUnit,
-  TargetTable
-} from "./data_source";
-
+  SourceTable, SingleTable,  
+  AttrInfoUnit, AttrInfo,
+  Key, BorderStyle, FontStyle, Border,
+  HeaderBlock, CellBlock, HeaderChannel, CellChannel, StyleClass
+} from "./data_source"
+import { CROSS_TABLE, ROW_TABLE, COLUM_TABLE, interCell } from "./data_intermediate";
 
 interface Spec {
-  data: DataSource;
-  spec: TargetTableSyntax;
+  data: SourceTable;
+  spec: SingleTable;
 }
 
 export {
-  Spec,
-  DataType,
-  DataSource,
-  DataSourceFormatEnum,
-  CSVArray,
-  JSONArray,
-  DataTableInterface,
-  DataTableAttribute,
-  DataTableTuple,
-  TargetTableSyntax,
-  TargetTableChannel,
-  TargetTableChannelUnit,
-  TargetTable
-};
+  Spec, SourceTable, SingleTable,
+  AttrInfoUnit, AttrInfo,
+  Key, BorderStyle, FontStyle, Border,
+  HeaderBlock, CellBlock, HeaderChannel, CellChannel, StyleClass,
+  CROSS_TABLE, ROW_TABLE, COLUM_TABLE, 
+  interCell
+}
