@@ -1,3 +1,4 @@
+import { isUnionTypeNode } from "typescript";
 import {
   Spec, SourceTable, SingleTable,
   AttrInfoUnit, AttrInfo, DataType,
@@ -16,7 +17,7 @@ const header_fill = (attrInfo: AttrInfo, header?: HeaderChannel): void => {
       hb.gridMerge = hb.gridMerge ?? true
       hb.expand = hb.expand ?? false 
       hb.facet = hb.facet ?? 1
-      hb.blankLine = false 
+      hb.blankLine = hb.blankLine ?? false 
       hb.style = "TODO"
       if(hb.function !== undefined) {
         if(hb.function === FUNC_SUM) hb.values = [FUNC_SUM]
@@ -87,12 +88,20 @@ const calc_head_size = (channel?: HeaderChannel, entityFlag: boolean = false): n
 // TODO: fix structure judge
 const get_structure_type = (channel?: HeaderChannel) => { 
   if (!channel || channel.length == 0) throw new Error("Header can not be undefined")
-  let hb: HeaderBlock = channel[0]
+  let hb0: HeaderBlock = channel[0], facetList: number[][] = Array.from({length:2}, () => new Array())
+  let blankList: boolean[] = new Array()
+  for(let hb of channel) {
+    if(hb.values!.length % hb.facet! !== 0) throw new Error("Facet can not be divided exactly")
+    facetList[0].push(hb.facet!)
+    facetList[1].push(hb.values!.length / hb.facet!)
+    blankList.push(hb.blankLine!)
+  }
   return {
-    entityMerge: hb.entityMerge,
-    gridMerge : hb.gridMerge,
-    expand: hb.expand,
-    facet: hb.facet 
+    entityMerge: hb0.entityMerge,
+    gridMerge : hb0.gridMerge,
+    expand: hb0.expand,
+    facet: facetList,
+    blankLine: blankList
   }
 }
 
@@ -111,6 +120,7 @@ const get_cell_val = (preVal, data, key) => {
 }
 
 // Aggregate Function
+// TODO: add more function
 const aggregate_use = (preVal, data, key, funcName: string = FUNC_SUM) => {
   if(funcName === FUNC_SUM) return aggregate_sum(preVal, data, key)
 }
@@ -144,19 +154,25 @@ const agg_type_check = (attrInfo: AttrInfo, attrName: string): boolean => {
 }
 
 // generate intermediate row table
-const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, depth: number, outerX: number, bias: number = 0): number => {
+const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, depth: number, 
+  outerX: number, bias: number = 0, isRoot: boolean = true): number => {
   if(rowHeader === undefined) return 1
-  let innerX: number = 0
+  let innerX = 0, rhId = -1
   for(let rh of rowHeader) {
     let isLeaf = rh.children ? false : true
     let source = rh.attrName ?? rh.function
-    for(let i:number=0; i<rh.values.length; i++) {
+    rhId++
+    for(let i=0; i<rh.values.length; i++) {
       let iterCount: number
       extra.preVal[source] = rh.values[i]
       if(extra.entityMerge) {
-        iterCount = gen_inter_row_table(interRowTable, rh.children, extra, width, depth, outerX+innerX+1, bias)
+        iterCount = gen_inter_row_table(interRowTable, rh.children, extra, width, depth, outerX+innerX+1, bias, false)
       } else {
-        iterCount = gen_inter_row_table(interRowTable, rh.children, extra, width, depth+1, outerX+innerX, bias)
+        iterCount = gen_inter_row_table(interRowTable, rh.children, extra, width, depth+1, outerX+innerX, bias, false)
+      }
+      if(isRoot) {
+        extra.rootSpan[rhId].push(iterCount)
+        extra.rootIdList[rhId].push(innerX)
       }
       if(innerX+outerX+iterCount > width) {
         console.log(innerX, outerX, iterCount);
@@ -168,7 +184,7 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
         interRowTable[innerX+outerX+bias][depth+delta] = {
           value: rh.values[i],
           source,
-          rowSpan: 1, colSpan: flag ? 1 : extra.rowDepth,
+          rowSpan: 1, colSpan: flag ? 1 : extra.Depth,
           isUsed: false, 
           isLeaf,
           style: rh.style
@@ -281,7 +297,9 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
       cell, 
       cellTable: Array.from({length: rowSize}, () => new Array()),
       attrInfo,
-      rowDepth,
+      rootSpan: Array.from({length: rowHeader.length}, () => new Array()),
+      rootIdList: Array.from({length: rowHeader.length}, () => new Array()),
+      Depth: calc_head_depth(rowHeader),
     }
     interTable = Array.from({length: rowSize}, () => new Array(rowDepth).fill({}))
     gen_inter_row_table(interTable, rowHeader, extra, rowSize, 0, 0)
@@ -290,7 +308,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
       for(let ct of extra.cellTable) cell_length = (cell_length>ct.length) ? cell_length : ct.length
     }
     console.log('@@@', interTable);
-    console.log('hhh', extra.cellTable);
+    // console.log('hhh', extra.cellTable);
     for(let i=0; i<rowSize; i++) {
       processTable[i] = []
       for(let j=0; j<rowDepth; j++) {
@@ -312,7 +330,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
             value: tmp.value, 
             source: tmp.source,
             rowSpan: 1, 
-            colSpan: 1,
+            colSpan: rowDepth,
             style: tmp.style
           })
         }
@@ -330,7 +348,64 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
         })
       }
     }
+    // fill empty unit
+    let maxLength = 0
+    for(let pt of processTable) {
+      let tmpLength = 0
+      for(let unit of pt) tmpLength += unit.colSpan
+      maxLength = maxLength>tmpLength ? maxLength : tmpLength
+    }
+    for(let pt of processTable) {
+      let resLength = maxLength
+      for(let unit of pt) resLength -= unit.colSpan
+      for(let i=0; i<resLength; i++) pt.push({
+          value: undefined as any,
+          source: undefined as any,
+          rowSpan: 1,
+          colSpan: 1,
+          style: undefined as any
+      })
+    }
+    // process blank line
+    let blankBias = 0
+    for(let i=0; i<rowHeader.length; i++) {
+      if(flag.blankLine[i]) {
+        let rootIdList = extra.rootIdList[i]
+        for(let j=0; j<rootIdList.length; j++) {
+          processTable.splice(rootIdList[j]+blankBias, 0, [])
+          extra.rootSpan[i][j]++
+          blankBias++
+        }
+      }
+    }
+    // console.log(blankBias);
+    // console.log('flag', flag.blankLine);
+    // console.log('Blank', extra.rootIdList);
+    // console.log('Span', extra.rootSpan);
+    // process facet structure
+    let finalTable: interCell[][] = [], rootSpan = extra.rootSpan
+    let preH = 0, processH = 0
+    for(let i=0; i<rowHeader.length; i++) {
+      let facetLen = flag.facet[1][i]
+      rootSpan[i] = rootSpan[i].reduce((newSpan, _, idx, arr) => {
+        if(idx % facetLen === 0) {
+          let sum = 0
+          for(let i=0; i<facetLen; i++) sum += arr[idx+i]
+          newSpan.push(sum)
+        }
+        return newSpan
+      }, [])
+      for(let j=0; j<rootSpan[i].length; j++) {
+        for(let k=0; k<rootSpan[i][j]; k++) {
+          if(!finalTable[preH+k]) finalTable[preH+k] = []
+          finalTable[preH+k] = finalTable[preH+k].concat(processTable[processH+k])
+        }
+        processH += rootSpan[i][j]
+      }
+      preH += rootSpan[i][0]
+    }
     console.log('XXX', processTable);
+    console.log('YYY', finalTable);
   } else if(tbClass == COLUM_TABLE) {
     interTable = Array.from({length: colDepth}, () => new Array(colSize).fill({}))
     gen_inter_column_table(interTable, columnHeader, colSize, 0, 0)

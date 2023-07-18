@@ -140,8 +140,10 @@ let spec4 = {
   rowHeader: [{
     attrName: "state",
     blockId: "3dca2581-a3c5-1fa2-edac-abc1c43123da",
-    entityMerge: true,
-    expand: true,
+    entityMerge: false,
+    expand: false,
+    facet: 1,
+    blankLine: true,
     children: [{
       attrName: "year",
 			blockId: "1beaf109-f1f2-4cb3-acce-bca9b18275aa",
@@ -155,6 +157,7 @@ let spec4 = {
     attrName: "test",
     blockId: "3dca2581-a3c5-1fa2-edac-abc1c51723da",
     entityMerge: false,
+    facet: 1,
   }],
   columnHeader: undefined,
   cell: [{
@@ -164,6 +167,10 @@ let spec4 = {
 	}, {
 		attrName: "crime",
 		rowParentId: "186f15a3-7e92-466d-9f8c-ef60bbe96768",
+		colParentId: undefined,
+	},{
+		attrName: "crime",
+		rowParentId: "1beaf109-f1f2-4cb3-acce-bca9b18275aa",
 		colParentId: undefined,
 	}],
   attrInfo: [{
