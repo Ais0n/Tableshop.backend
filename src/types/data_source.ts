@@ -30,7 +30,11 @@ export interface AttrInfoUnit {
 export type AttrInfo = AttrInfoUnit[]
 
 // Block
-enum Position {
+export const KEY_ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII']
+export const KEY_NUMERICAL = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12']
+export const KEY_ALPHABETIC = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L']
+
+export enum Position {
   EMBEDDED = "embedded",
   LEFT = "left",
   RIGHT = "right",
@@ -38,7 +42,7 @@ enum Position {
   BOTTOM = "bottom"
 }
 
-enum Pattern {
+export enum Pattern {
   ROMAN = "I",
   NUMERICAL = "1",
   ALPHABETIC = "A"

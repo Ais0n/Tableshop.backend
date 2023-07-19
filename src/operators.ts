@@ -2,7 +2,8 @@ import { isUnionTypeNode } from "typescript";
 import {
   Spec, SourceTable, SingleTable,
   AttrInfoUnit, AttrInfo, DataType,
-  Key, BorderStyle, FontStyle, Border,
+  Key, KEY_ALPHABETIC, KEY_ROMAN, KEY_NUMERICAL, Pattern, Position,
+  BorderStyle, FontStyle, Border,
   HeaderBlock, CellBlock, HeaderChannel, CellChannel, StyleClass,
   FUNC_SUM,
   CROSS_TABLE, ROW_TABLE, COLUM_TABLE, 
@@ -10,7 +11,7 @@ import {
 } from "./types";
 
 
-const header_fill = (attrInfo: AttrInfo, header?: HeaderChannel): void => {
+const header_fill = (attrInfo: AttrInfo, header?: HeaderChannel, preKeyType?: Pattern): void => {
   if(header !== undefined) {
     for(let hb of header) {
       hb.entityMerge = hb.entityMerge ?? false
@@ -18,6 +19,7 @@ const header_fill = (attrInfo: AttrInfo, header?: HeaderChannel): void => {
       hb.expand = hb.expand ?? false 
       hb.facet = hb.facet ?? 1
       hb.blankLine = hb.blankLine ?? false 
+      if(hb.key && preKeyType && hb.key.isInherited) hb.key.pattern = preKeyType
       hb.style = "TODO"
       if(hb.function !== undefined) {
         if(hb.function === FUNC_SUM) hb.values = [FUNC_SUM]
@@ -28,7 +30,7 @@ const header_fill = (attrInfo: AttrInfo, header?: HeaderChannel): void => {
         return obj.name == hb.attrName
       })!
       hb.values = hb.values ?? attr.values
-      header_fill(attrInfo, hb.children)
+      header_fill(attrInfo, hb.children, hb.key ? hb.key.pattern: undefined)
     }
   }
 }
@@ -119,6 +121,19 @@ const get_cell_val = (preVal, data, key) => {
   return undefined
 }
 
+const get_key = (key: Key, level: number, preKey: string) => {
+  if(!key) return ''
+  let nowKey = ''
+  if(key.pattern === Pattern.ROMAN) {
+    nowKey = KEY_ROMAN[level]
+  } else if(key.pattern === Pattern.NUMERICAL) {
+    nowKey = KEY_NUMERICAL[level]
+  } else if(key.pattern === Pattern.ALPHABETIC) {
+    nowKey = KEY_ALPHABETIC[level]
+  }
+  return preKey === '' ? nowKey : [preKey, nowKey].join('.')
+}
+
 // Aggregate Function
 // TODO: add more function
 const aggregate_use = (preVal, data, key, funcName: string = FUNC_SUM) => {
@@ -155,7 +170,7 @@ const agg_type_check = (attrInfo: AttrInfo, attrName: string): boolean => {
 
 // generate intermediate row table
 const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, depth: number, 
-  outerX: number, bias: number = 0, isRoot: boolean = true): number => {
+  outerX: number, bias: number = 0, isRoot: boolean = true, preKey: string = ''): number => {
   if(rowHeader === undefined) return 1
   let innerX = 0, rhId = -1
   for(let rh of rowHeader) {
@@ -163,12 +178,14 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
     let source = rh.attrName ?? rh.function
     rhId++
     for(let i=0; i<rh.values.length; i++) {
-      let iterCount: number
+      let iterCount: number, key = rh.key ? get_key(rh.key, i, preKey) : ''
       extra.preVal[source] = rh.values[i]
       if(extra.entityMerge) {
-        iterCount = gen_inter_row_table(interRowTable, rh.children, extra, width, depth, outerX+innerX+1, bias, false)
+        iterCount = gen_inter_row_table(interRowTable, rh.children, extra, width, depth, 
+          outerX+innerX+1, bias, false, key)
       } else {
-        iterCount = gen_inter_row_table(interRowTable, rh.children, extra, width, depth+1, outerX+innerX, bias, false)
+        iterCount = gen_inter_row_table(interRowTable, rh.children, extra, width, depth+1, 
+          outerX+innerX, bias, false, key)
       }
       if(isRoot) {
         extra.rootSpan[rhId].push(iterCount)
@@ -187,6 +204,7 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
           rowSpan: 1, colSpan: flag ? 1 : extra.Depth,
           isUsed: false, 
           isLeaf,
+          key,
           style: rh.style
         }
       // process cells unmerged
@@ -378,10 +396,6 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
         }
       }
     }
-    // console.log(blankBias);
-    // console.log('flag', flag.blankLine);
-    // console.log('Blank', extra.rootIdList);
-    // console.log('Span', extra.rootSpan);
     // process facet structure
     let finalTable: interCell[][] = [], rootSpan = extra.rootSpan
     let preH = 0, processH = 0
@@ -404,8 +418,8 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
       }
       preH += rootSpan[i][0]
     }
-    console.log('XXX', processTable);
-    console.log('YYY', finalTable);
+    // console.log('XXX', processTable);
+    // console.log('YYY', finalTable);
   } else if(tbClass == COLUM_TABLE) {
     interTable = Array.from({length: colDepth}, () => new Array(colSize).fill({}))
     gen_inter_column_table(interTable, columnHeader, colSize, 0, 0)

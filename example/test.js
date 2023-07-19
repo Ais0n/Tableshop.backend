@@ -140,13 +140,23 @@ let spec4 = {
   rowHeader: [{
     attrName: "state",
     blockId: "3dca2581-a3c5-1fa2-edac-abc1c43123da",
-    entityMerge: false,
+    entityMerge: true,
     expand: false,
     facet: 1,
+    key: {
+      position: "embedded",
+      pattern: "1",
+      isInherited: true
+    },
     blankLine: true,
     children: [{
       attrName: "year",
 			blockId: "1beaf109-f1f2-4cb3-acce-bca9b18275aa",
+      key: {
+        position: "embedded",
+        pattern: "I",
+        isInherited: false
+      },
       // entityMerge: true,
     }, {
 			function: "sum",
