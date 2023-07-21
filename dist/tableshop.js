@@ -61,7 +61,7 @@ var CROSS_TABLE = "cross table";
 var ROW_TABLE = "row table";
 var COLUM_TABLE = "column table";
 
-var header_fill = function (attrInfo, header, preKeyType) {
+var header_fill = function (attrInfo, header) {
     var _a, _b, _c, _d, _e, _f;
     if (header !== undefined) {
         var _loop_1 = function (hb) {
@@ -70,8 +70,8 @@ var header_fill = function (attrInfo, header, preKeyType) {
             hb.expand = (_c = hb.expand) !== null && _c !== void 0 ? _c : false;
             hb.facet = (_d = hb.facet) !== null && _d !== void 0 ? _d : 1;
             hb.blankLine = (_e = hb.blankLine) !== null && _e !== void 0 ? _e : false;
-            if (hb.key && preKeyType && hb.key.isInherited)
-                hb.key.pattern = preKeyType;
+            if (hb.key && Object.keys(hb.key).length === 0)
+                hb.key = undefined;
             hb.style = "TODO";
             if (hb.function !== undefined) {
                 if (hb.function === FUNC_SUM)
@@ -84,7 +84,7 @@ var header_fill = function (attrInfo, header, preKeyType) {
                 return obj.name == hb.attrName;
             });
             hb.values = (_f = hb.values) !== null && _f !== void 0 ? _f : attr.values;
-            header_fill(attrInfo, hb.children, hb.key ? hb.key.pattern : undefined);
+            header_fill(attrInfo, hb.children);
         };
         for (var _i = 0, header_1 = header; _i < header_1.length; _i++) {
             var hb = header_1[_i];
@@ -152,14 +152,54 @@ var calc_head_size = function (channel, entityFlag) {
     }
     return size;
 };
+var calc_key_layer = function (channel) {
+    if (!channel || channel.length == 0)
+        return 0;
+    var layerCount = 0, d1 = 0, d2 = 0;
+    for (var _i = 0, channel_3 = channel; _i < channel_3.length; _i++) {
+        var hb = channel_3[_i];
+        if (hb.key && hb.key.position !== Position.EMBEDDED) {
+            if (hb.key.position === Position.LEFT)
+                d1 = 1;
+            else if (hb.key.position === Position.RIGHT)
+                d2 = 1;
+        }
+        var tmp = calc_key_layer(hb.children);
+        layerCount = (layerCount < tmp) ? tmp : layerCount;
+    }
+    return layerCount + d1 + d2;
+};
+var calc_current_key_layer = function (channel, tableClass) {
+    var beforeLayer = 0, afterLayer = 0;
+    if (tableClass === ROW_TABLE) {
+        for (var _i = 0, channel_4 = channel; _i < channel_4.length; _i++) {
+            var hb = channel_4[_i];
+            if (hb.key && hb.key.position === Position.LEFT)
+                beforeLayer = 1;
+            if (hb.key && hb.key.position === Position.RIGHT)
+                afterLayer = 1;
+        }
+    }
+    else if (tableClass === COLUM_TABLE) {
+        for (var _a = 0, channel_5 = channel; _a < channel_5.length; _a++) {
+            var hb = channel_5[_a];
+            if (hb.key && hb.key.position === Position.TOP)
+                beforeLayer = 1;
+            if (hb.key && hb.key.position === Position.BOTTOM)
+                afterLayer = 1;
+        }
+    }
+    var midBias = beforeLayer > 0 ? 1 : 0;
+    return [beforeLayer + afterLayer, midBias];
+};
 // TODO: fix structure judge
 var get_structure_type = function (channel) {
     if (!channel || channel.length == 0)
         throw new Error("Header can not be undefined");
     var hb0 = channel[0], facetList = Array.from({ length: 2 }, function () { return new Array(); });
     var blankList = new Array();
-    for (var _i = 0, channel_3 = channel; _i < channel_3.length; _i++) {
-        var hb = channel_3[_i];
+    for (var _i = 0, channel_6 = channel; _i < channel_6.length; _i++) {
+        var hb = channel_6[_i];
         if (hb.values.length % hb.facet !== 0)
             throw new Error("Facet can not be divided exactly");
         facetList[0].push(hb.facet);
@@ -202,7 +242,7 @@ var get_key = function (key, level, preKey) {
     else if (key.pattern === Pattern.ALPHABETIC) {
         nowKey = KEY_ALPHABETIC[level];
     }
-    return preKey === '' ? nowKey : [preKey, nowKey].join('.');
+    return (key.isInherited && preKey !== '') ? [preKey, nowKey].join('.') : nowKey;
 };
 // Aggregate Function
 // TODO: add more function
@@ -241,27 +281,41 @@ var agg_type_check = function (attrInfo, attrName) {
     return false;
 };
 // generate intermediate row table
-var gen_inter_row_table = function (interRowTable, rowHeader, extra, width, depth, outerX, bias, isRoot, preKey) {
+var gen_inter_row_table = function (interRowTable, rowHeader, extra, width, depth, outerX, bias, isRoot, preKey, keyBias) {
     var _a;
     if (bias === void 0) { bias = 0; }
     if (isRoot === void 0) { isRoot = true; }
     if (preKey === void 0) { preKey = ''; }
+    if (keyBias === void 0) { keyBias = 0; }
     if (rowHeader === undefined)
         return 1;
     var innerX = 0, rhId = -1;
+    var _b = calc_current_key_layer(rowHeader, ROW_TABLE), currentKeyLayer = _b[0], midBias = _b[1];
     for (var _i = 0, rowHeader_1 = rowHeader; _i < rowHeader_1.length; _i++) {
         var rh = rowHeader_1[_i];
         var isLeaf = rh.children ? false : true;
         var source = (_a = rh.attrName) !== null && _a !== void 0 ? _a : rh.function;
+        var headerDepth = depth + keyBias + midBias, keyDepth = headerDepth;
+        if (rh.key && rh.key.position === Position.LEFT)
+            keyDepth = headerDepth - 1;
+        if (rh.key && rh.key.position === Position.RIGHT)
+            keyDepth = headerDepth + 1;
         rhId++;
         for (var i = 0; i < rh.values.length; i++) {
             var iterCount = void 0, key = rh.key ? get_key(rh.key, i, preKey) : '';
+            var keyData = {
+                value: key, source: '@KEY',
+                rowSpan: 1, colSpan: 1,
+                isUsed: false,
+                isLeaf: isLeaf,
+                style: 'KEY STYLE'
+            };
             extra.preVal[source] = rh.values[i];
             if (extra.entityMerge) {
-                iterCount = gen_inter_row_table(interRowTable, rh.children, extra, width, depth, outerX + innerX + 1, bias, false, key);
+                iterCount = gen_inter_row_table(interRowTable, rh.children, extra, width, depth, outerX + innerX + 1, bias, false, key, currentKeyLayer + keyBias);
             }
             else {
-                iterCount = gen_inter_row_table(interRowTable, rh.children, extra, width, depth + 1, outerX + innerX, bias, false, key);
+                iterCount = gen_inter_row_table(interRowTable, rh.children, extra, width, depth + 1, outerX + innerX, bias, false, key, currentKeyLayer + keyBias);
             }
             if (isRoot) {
                 extra.rootSpan[rhId].push(iterCount);
@@ -280,13 +334,14 @@ var gen_inter_row_table = function (interRowTable, rowHeader, extra, width, dept
                     rowSpan: 1, colSpan: flag ? 1 : extra.Depth,
                     isUsed: false,
                     isLeaf: isLeaf,
-                    key: key,
                     style: rh.style
                 };
                 // process cells unmerged
             }
             else if (!extra.gridMerge) {
-                interRowTable[innerX + outerX + bias][depth] = {
+                if (key !== '')
+                    interRowTable[innerX + outerX + bias][keyDepth] = keyData;
+                interRowTable[innerX + outerX + bias][headerDepth] = {
                     value: rh.values[i],
                     source: source,
                     rowSpan: 1, colSpan: 1,
@@ -297,8 +352,11 @@ var gen_inter_row_table = function (interRowTable, rowHeader, extra, width, dept
                 // process cells merged
             }
             else {
+                keyData.rowSpan = iterCount;
                 for (var j = 0; j < iterCount; j++) {
-                    interRowTable[innerX + outerX + j + bias][depth] = {
+                    if (key !== '')
+                        interRowTable[innerX + outerX + j + bias][keyDepth] = keyData;
+                    interRowTable[innerX + outerX + j + bias][headerDepth] = {
                         value: rh.values[i],
                         source: source,
                         rowSpan: iterCount, colSpan: 1,
@@ -310,8 +368,8 @@ var gen_inter_row_table = function (interRowTable, rowHeader, extra, width, dept
             }
             // process cell unit
             if (isLeaf) {
-                for (var _b = 0, _c = extra.cell; _b < _c.length; _b++) {
-                    var c = _c[_b];
+                for (var _c = 0, _d = extra.cell; _c < _d.length; _c++) {
+                    var c = _d[_c];
                     if (c.rowParentId == rh.blockId) {
                         // process function cell
                         if (rh.function) {
@@ -383,16 +441,18 @@ var table_process = function (tbClass, data, _a) {
     var rowSize = calc_head_size(rowHeader);
     var colSize = calc_head_size(columnHeader);
     if (tbClass == ROW_TABLE) {
-        var flag = get_structure_type(rowHeader);
-        if (flag.entityMerge) {
+        var flag_1 = get_structure_type(rowHeader);
+        if (flag_1.entityMerge) {
             rowSize = calc_head_size(rowHeader, true);
-            rowDepth = flag.expand ? 2 : 1;
+            rowDepth = flag_1.expand ? 2 : 1;
         }
-        var extra = __assign(__assign({}, flag), { preVal: {}, data: data.values, cell: cell, cellTable: Array.from({ length: rowSize }, function () { return new Array(); }), attrInfo: attrInfo, rootSpan: Array.from({ length: rowHeader.length }, function () { return new Array(); }), rootIdList: Array.from({ length: rowHeader.length }, function () { return new Array(); }), Depth: calc_head_depth(rowHeader) });
-        interTable = Array.from({ length: rowSize }, function () { return new Array(rowDepth).fill({}); });
+        rowDepth += calc_key_layer(rowHeader);
+        var extra = __assign(__assign({}, flag_1), { preVal: {}, data: data.values, cell: cell, cellTable: Array.from({ length: rowSize }, function () { return new Array(); }), attrInfo: attrInfo, rootSpan: Array.from({ length: rowHeader.length }, function () { return new Array(); }), rootIdList: Array.from({ length: rowHeader.length }, function () { return new Array(); }), Depth: calc_head_depth(rowHeader) });
+        interTable = Array.from({ length: rowSize }, function () { return new Array(rowDepth)
+            .fill({ rowSpan: 1, colSpan: flag_1.entityMerge ? rowDepth : 1 }); });
         gen_inter_row_table(interTable, rowHeader, extra, rowSize, 0, 0);
         var cell_length = 0;
-        if (flag.expand) {
+        if (flag_1.expand) {
             for (var _i = 0, _b = extra.cellTable; _i < _b.length; _i++) {
                 var ct = _b[_i];
                 cell_length = (cell_length > ct.length) ? cell_length : ct.length;
@@ -400,6 +460,7 @@ var table_process = function (tbClass, data, _a) {
         }
         console.log('@@@', interTable);
         // console.log('hhh', extra.cellTable);
+        var maxLength = 0, tmpLength = [];
         for (var i = 0; i < rowSize; i++) {
             processTable[i] = [];
             for (var j = 0; j < rowDepth; j++) {
@@ -407,9 +468,9 @@ var table_process = function (tbClass, data, _a) {
                 // if(tmp.isUsed || tmp.value===undefined) continue 
                 if (tmp.isUsed)
                     continue;
-                if (flag.expand && processTable[i].length > 0 && tmp.value === undefined)
+                if (flag_1.expand && processTable[i].length > 0 && tmp.value === undefined)
                     continue;
-                if (flag.expand && !tmp.isLeaf)
+                if (flag_1.expand && !tmp.isLeaf)
                     tmp.colSpan = cell_length;
                 if (tmp.value) {
                     processTable[i].push({
@@ -425,7 +486,7 @@ var table_process = function (tbClass, data, _a) {
                         value: tmp.value,
                         source: tmp.source,
                         rowSpan: 1,
-                        colSpan: rowDepth,
+                        colSpan: tmp.colSpan,
                         style: tmp.style
                     });
                 }
@@ -433,8 +494,10 @@ var table_process = function (tbClass, data, _a) {
                     interTable[i + k][j].isUsed = true;
                 }
             }
+            tmpLength[i] = rowDepth;
             for (var _c = 0, _d = extra.cellTable[i]; _c < _d.length; _c++) {
                 var c = _d[_c];
+                tmpLength[i]++;
                 processTable[i].push({
                     value: c.value,
                     source: c.source,
@@ -443,27 +506,23 @@ var table_process = function (tbClass, data, _a) {
                     style: c.style
                 });
             }
+            console.log('len', tmpLength[i]);
+            maxLength = maxLength > tmpLength[i] ? maxLength : tmpLength[i];
         }
         // fill empty unit
-        var maxLength = 0;
-        for (var _e = 0, processTable_1 = processTable; _e < processTable_1.length; _e++) {
-            var pt = processTable_1[_e];
-            var tmpLength = 0;
-            for (var _f = 0, pt_1 = pt; _f < pt_1.length; _f++) {
-                var unit = pt_1[_f];
-                tmpLength += unit.colSpan;
-            }
-            maxLength = maxLength > tmpLength ? maxLength : tmpLength;
-        }
-        for (var _g = 0, processTable_2 = processTable; _g < processTable_2.length; _g++) {
-            var pt = processTable_2[_g];
-            var resLength = maxLength;
-            for (var _h = 0, pt_2 = pt; _h < pt_2.length; _h++) {
-                var unit = pt_2[_h];
-                resLength -= unit.colSpan;
-            }
-            for (var i = 0; i < resLength; i++)
-                pt.push({
+        // let maxLength = 0
+        // for(let pt of processTable) {
+        //   let tmpLength = 0
+        //   for(let unit of pt) tmpLength += unit.colSpan
+        //   console.log('len', tmpLength);
+        //   maxLength = maxLength>tmpLength ? maxLength : tmpLength
+        // }
+        for (var i = 0; i < processTable.length; i++) {
+            // let resLength = maxLength
+            // for(let unit of pt) resLength -= unit.colSpan
+            var resLength = maxLength - tmpLength[i];
+            for (var j = 0; j < resLength; j++)
+                processTable[i].push({
                     value: undefined,
                     source: undefined,
                     rowSpan: 1,
@@ -474,7 +533,7 @@ var table_process = function (tbClass, data, _a) {
         // process blank line
         var blankBias = 0;
         for (var i = 0; i < rowHeader.length; i++) {
-            if (flag.blankLine[i]) {
+            if (flag_1.blankLine[i]) {
                 var rootIdList = extra.rootIdList[i];
                 for (var j = 0; j < rootIdList.length; j++) {
                     processTable.splice(rootIdList[j] + blankBias, 0, []);
@@ -487,7 +546,7 @@ var table_process = function (tbClass, data, _a) {
         var finalTable = [], rootSpan = extra.rootSpan;
         var preH = 0, processH = 0;
         var _loop_2 = function (i) {
-            var facetLen = flag.facet[1][i];
+            var facetLen = flag_1.facet[1][i];
             rootSpan[i] = rootSpan[i].reduce(function (newSpan, _, idx, arr) {
                 if (idx % facetLen === 0) {
                     var sum = 0;
@@ -510,7 +569,7 @@ var table_process = function (tbClass, data, _a) {
         for (var i = 0; i < rowHeader.length; i++) {
             _loop_2(i);
         }
-        // console.log('XXX', processTable);
+        console.log('XXX', processTable);
         // console.log('YYY', finalTable);
     }
     else if (tbClass == COLUM_TABLE) {

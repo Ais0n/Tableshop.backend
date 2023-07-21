@@ -140,34 +140,39 @@ let spec4 = {
   rowHeader: [{
     attrName: "state",
     blockId: "3dca2581-a3c5-1fa2-edac-abc1c43123da",
-    entityMerge: true,
+    gridMerge : true,
+    entityMerge: false,
     expand: false,
     facet: 1,
     key: {
-      position: "embedded",
+      position: "left",
       pattern: "1",
       isInherited: true
     },
-    blankLine: true,
+    blankLine: false,
     children: [{
       attrName: "year",
 			blockId: "1beaf109-f1f2-4cb3-acce-bca9b18275aa",
       key: {
-        position: "embedded",
+        position: "left",
         pattern: "I",
-        isInherited: false
+        isInherited: true
       },
-      // entityMerge: true,
     }, {
 			function: "sum",
 			blockId: "186f15a3-7e92-466d-9f8c-ef60bbe96768",
-      // entityMerge: true,
 		}],
   }, {
     attrName: "test",
     blockId: "3dca2581-a3c5-1fa2-edac-abc1c51723da",
     entityMerge: false,
     facet: 1,
+    key: {
+      position: "right",
+      // position: "embedded",
+      pattern: "A",
+      isInherited: false
+    },
   }],
   columnHeader: undefined,
   cell: [{
