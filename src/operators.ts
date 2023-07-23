@@ -1,4 +1,3 @@
-import { channel } from "diagnostics_channel";
 import {
   Spec, SourceTable, SingleTable,
   AttrInfoUnit, AttrInfo, DataType,
@@ -224,7 +223,6 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
   outerX: number, bias = 0, isRoot = true, preKey = '', keyBias = 0): number => {
   if(rowHeader === undefined) return 1
   let innerX = 0, rhId = -1
-  // let [currentKeyLayer, leftBias, rightBias] = calc_current_key_layer(rowHeader, ROW_TABLE)
   let leftBias = 0, rightBias = 0
   if(extra.entityMerge) {
     let [lb, rb] = extra.layersBias
@@ -238,11 +236,14 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
     let isLeaf = rh.children ? false : true
     let source = rh.attrName ?? rh.function
     let headerDepth = depth + keyBias + leftBias, keyDepth = headerDepth
+    let isKeyEmbedded = false
     if(rh.key && rh.key.position === Position.LEFT) keyDepth = headerDepth - 1
     if(rh.key && rh.key.position === Position.RIGHT) keyDepth = headerDepth + 1
+    if(rh.key && rh.key.position === Position.EMBEDDED) isKeyEmbedded = true
     rhId++
     for(let i=0; i<rh.values.length; i++) {
       let iterCount: number, key = rh.key ? get_key(rh.key, i, preKey) : ''
+      let headValue = isKeyEmbedded ? key+ ' ' + rh.values[i] : rh.value[i]
       let keyData = {
         value: key, 
         source: '@KEY',
@@ -271,12 +272,11 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
       // process entities merged
       if(extra.entityMerge) {
         let flag = !isLeaf && extra.expand, delta = flag ? 1+rightBias : 0
-        // if(lb > 0) interRowTable[innerX+outerX+bias][headerDepth-lb] = {...keyData, value: ''}
-        // if(rb > 0) interRowTable[innerX+outerX+bias][headerDepth+rb] = {...keyData, value: ''}
         interRowTable[innerX+outerX+bias][keyDepth] = keyData
         if(flag) interRowTable[innerX+outerX+bias][headerDepth] = {rowSpan: 1, colSpan: extra.depth}
+        if(isLeaf && extra.expand) interRowTable[innerX+outerX+bias][headerDepth+1+rightBias] = {isDelete: true}
         interRowTable[innerX+outerX+bias][headerDepth+delta] = {
-          value: rh.values[i],
+          value: headValue,
           source,
           rowSpan: 1, colSpan: flag ? 1 : extra.depth,
           isUsed: false, 
@@ -284,16 +284,11 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
           isKey: false,
           style: rh.style
         }
-        if(isLeaf && extra.expand) interRowTable[innerX+outerX+bias][headerDepth+1+rightBias] = {isDelete: true}
       // process cells unmerged
       } else if(!extra.gridMerge) {
-        // let [lb, rb] = extra.layersBias[depth]
-        // if(lb > 0) interRowTable[innerX+outerX+bias][headerDepth-lb] = {...keyData, value: ''}
-        // if(rb > 0) interRowTable[innerX+outerX+bias][headerDepth+rb] = {...keyData, value: ''}
-        // console.log('attr', rh.attrName, lb, rb);
         interRowTable[innerX+outerX+bias][keyDepth] = keyData
         interRowTable[innerX+outerX+bias][headerDepth] = {
-          value: rh.values[i],
+          value: headValue,
           source,
           rowSpan: 1, colSpan: 1,
           isUsed: false,
@@ -305,11 +300,9 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
       } else {
         keyData.rowSpan = iterCount
         for(let j:number=0; j<iterCount; j++) {
-          // if(leftBias > 0) interRowTable[innerX+outerX+bias][headerDepth-leftBias] = shallowCopy(keyData)
-          // if(rightBias > 0) interRowTable[innerX+outerX+bias][headerDepth+rightBias] = shallowCopy(keyData)
           interRowTable[innerX+outerX+j+bias][keyDepth] = keyData
           interRowTable[innerX+outerX+j+bias][headerDepth] = {
-            value: rh.values[i],
+            value: headValue,
             source,
             rowSpan: iterCount, colSpan: 1,
             isUsed: false,
@@ -399,10 +392,10 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
       rowDepth = flag.expand ? 2 : 1
     } 
     rowDepth += calc_overall_key_layer(rowHeader, flag.entityMerge)
-    console.log('total layer', calc_overall_key_layer(rowHeader, flag.entityMerge));
+    // console.log('total layer', calc_overall_key_layer(rowHeader, flag.entityMerge));
     let layersBias = []
     calc_each_key_layer(rowHeader, layersBias, 0, flag.entityMerge, ROW_TABLE)
-    console.log('layers bias', layersBias);
+    // console.log('layers bias', layersBias);
     let extra = {
       ...flag,
       preVal: {},
@@ -469,7 +462,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
           style: c.style
         })
       }
-      console.log('len', tmpLength[i], tmpLength[i]-extra.cellTable[i].length);
+      // console.log('len', tmpLength[i], tmpLength[i]-extra.cellTable[i].length);
       maxLength = maxLength>tmpLength[i] ? maxLength : tmpLength[i]
     }
     // fill empty unit
@@ -517,8 +510,8 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
       }
       preH += rootSpan[i][0]
     }
-    console.log('XXX', processTable);
-    console.log('YYY', finalTable);
+    // console.log('XXX', processTable);
+    // console.log('YYY', finalTable);
   } else if(tbClass == COLUM_TABLE) {
     interTable = Array.from({length: colDepth}, () => new Array(colSize).fill({}))
     gen_inter_column_table(interTable, columnHeader, colSize, 0, 0)

@@ -145,7 +145,8 @@ let spec4 = {
     expand: true,
     facet: 2,
     key: {
-      position: "left",
+      // position: "left",
+      position: "embedded",
       pattern: "1",
       isInherited: true
     },
@@ -154,14 +155,16 @@ let spec4 = {
       attrName: "year",
 			blockId: "1beaf109-f1f2-4cb3-acce-bca9b18275aa",
       key: {
-        position: "left",
+        // position: "left",
+      position: "embedded",
         pattern: "I",
         isInherited: true
       },
     }, {
 			function: "sum",
       key: {
-        position: "right",
+        // position: "right",
+        position: "embedded",
         pattern: "I",
         isInherited: true
       },
@@ -173,8 +176,8 @@ let spec4 = {
     entityMerge: false,
     facet: 1,
     key: {
-      position: "right",
-      // position: "embedded",
+      // position: "right",
+      position: "embedded",
       pattern: "A",
       isInherited: false
     },
