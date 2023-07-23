@@ -31,3 +31,11 @@ export const deepClone = (target) => {
   // 返回最终结果
   return result;
 }
+
+export const shallowCopy = (origin) => {
+  let target = {};
+  for (let i in origin) {
+    target[i] = origin[i];
+  }
+  return target;
+}

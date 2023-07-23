@@ -140,10 +140,10 @@ let spec4 = {
   rowHeader: [{
     attrName: "state",
     blockId: "3dca2581-a3c5-1fa2-edac-abc1c43123da",
-    gridMerge : true,
-    entityMerge: false,
-    expand: false,
-    facet: 1,
+    gridMerge : false,
+    entityMerge: true,
+    expand: true,
+    facet: 2,
     key: {
       position: "left",
       pattern: "1",
@@ -160,6 +160,11 @@ let spec4 = {
       },
     }, {
 			function: "sum",
+      key: {
+        position: "right",
+        pattern: "I",
+        isInherited: true
+      },
 			blockId: "186f15a3-7e92-466d-9f8c-ef60bbe96768",
 		}],
   }, {

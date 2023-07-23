@@ -1,4 +1,4 @@
-import { isUnionTypeNode } from "typescript";
+import { channel } from "diagnostics_channel";
 import {
   Spec, SourceTable, SingleTable,
   AttrInfoUnit, AttrInfo, DataType,
@@ -9,7 +9,7 @@ import {
   CROSS_TABLE, ROW_TABLE, COLUM_TABLE, 
   interCell
 } from "./types";
-import { channel } from "diagnostics_channel";
+import { shallowCopy } from "./utils";
 
 
 const header_fill = (attrInfo: AttrInfo, header?: HeaderChannel): void => {
@@ -88,7 +88,7 @@ const calc_head_size = (channel?: HeaderChannel, entityFlag: boolean = false): n
   return size
 }
 
-const calc_key_layer = (channel?: HeaderChannel): number => {
+const calc_overall_key_layer = (channel?: HeaderChannel, entityFlag: boolean = false): number => {
   if (!channel || channel.length == 0) return 0
   let layerCount = 0, d1 = 0, d2 = 0
   for(let hb of channel) {
@@ -96,10 +96,11 @@ const calc_key_layer = (channel?: HeaderChannel): number => {
       if(hb.key.position === Position.LEFT) d1 = 1
       else if(hb.key.position === Position.RIGHT) d2 = 1
     }
-    let tmp = calc_key_layer(hb.children)
+    let tmp = calc_overall_key_layer(hb.children, entityFlag)
+    if(entityFlag) tmp = (d1+d2 < tmp) ? tmp : d1 + d2
     layerCount = (layerCount < tmp) ? tmp : layerCount
   }
-  return layerCount + d1 + d2
+  return layerCount + (entityFlag ? 0 : d1+d2)
 }
 
 const calc_current_key_layer = (channel: HeaderChannel, tableClass: string) => {
@@ -115,8 +116,26 @@ const calc_current_key_layer = (channel: HeaderChannel, tableClass: string) => {
       if(hb.key && hb.key.position === Position.BOTTOM) afterLayer = 1
     }
   }
-  let midBias = beforeLayer>0 ? 1 : 0
-  return [beforeLayer+afterLayer, midBias]
+  let beforeBias = beforeLayer, afterBias = afterLayer
+  return [beforeLayer+afterLayer, beforeBias, afterBias]
+}
+
+const calc_each_key_layer = (channel?: HeaderChannel, layersBias: any = [], depth = 0, entityFlag = false, tableClass = ROW_TABLE) => {
+  if (!channel || channel.length == 0) return 
+  let [_, leftBias, rightBias] = calc_current_key_layer(channel, tableClass)
+  if(entityFlag) {
+    layersBias[0] = leftBias
+    layersBias[1] = rightBias
+  } else {
+    if(layersBias[depth] === undefined) layersBias[depth] = [leftBias, rightBias]
+    else {
+      layersBias[depth][0] = layersBias[depth][0]<leftBias ? leftBias : layersBias[depth][0]
+      layersBias[depth][1] = layersBias[depth][1]<rightBias ? rightBias : layersBias[depth][1]
+    }
+    for(let hb of channel) {
+      calc_each_key_layer(hb.children, layersBias, depth+1, entityFlag, tableClass)
+    }
+  }
 }
 
 // TODO: fix structure judge
@@ -205,72 +224,97 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
   outerX: number, bias = 0, isRoot = true, preKey = '', keyBias = 0): number => {
   if(rowHeader === undefined) return 1
   let innerX = 0, rhId = -1
-  let [currentKeyLayer, midBias] = calc_current_key_layer(rowHeader, ROW_TABLE)
+  // let [currentKeyLayer, leftBias, rightBias] = calc_current_key_layer(rowHeader, ROW_TABLE)
+  let leftBias = 0, rightBias = 0
+  if(extra.entityMerge) {
+    let [lb, rb] = extra.layersBias
+    leftBias = lb, rightBias = rb
+  } else {
+    let [lb, rb] = extra.layersBias[depth]
+    leftBias = lb, rightBias = rb
+  }
+  let currentKeyLayer = leftBias + rightBias
   for(let rh of rowHeader) {
     let isLeaf = rh.children ? false : true
     let source = rh.attrName ?? rh.function
-    let headerDepth = depth + keyBias + midBias, keyDepth = headerDepth
+    let headerDepth = depth + keyBias + leftBias, keyDepth = headerDepth
     if(rh.key && rh.key.position === Position.LEFT) keyDepth = headerDepth - 1
     if(rh.key && rh.key.position === Position.RIGHT) keyDepth = headerDepth + 1
     rhId++
     for(let i=0; i<rh.values.length; i++) {
       let iterCount: number, key = rh.key ? get_key(rh.key, i, preKey) : ''
       let keyData = {
-        value: key, source: '@KEY',
+        value: key, 
+        source: '@KEY',
         rowSpan: 1, colSpan: 1,
         isUsed: false,
         isLeaf,
+        isKey: true,
         style: 'KEY STYLE'
       }
       extra.preVal[source] = rh.values[i]
       if(extra.entityMerge) {
         iterCount = gen_inter_row_table(interRowTable, rh.children, extra, width, depth, 
-          outerX+innerX+1, bias, false, key, currentKeyLayer+keyBias)
+          outerX+innerX+1, bias, false, key, keyBias)
       } else {
         iterCount = gen_inter_row_table(interRowTable, rh.children, extra, width, depth+1, 
           outerX+innerX, bias, false, key, currentKeyLayer+keyBias)
-      }
-      if(isRoot) {
-        extra.rootSpan[rhId].push(iterCount)
-        extra.rootIdList[rhId].push(innerX)
       }
       if(innerX+outerX+iterCount > width) {
         console.log(innerX, outerX, iterCount);
         throw new Error("Over rowHeader width!")
       }
+      if(isRoot) {
+        extra.rootSpan[rhId].push(iterCount)
+        extra.rootIdList[rhId].push(innerX)
+      }
       // process entities merged
       if(extra.entityMerge) {
-        let flag = !isLeaf && extra.expand, delta = flag ? 1 : 0
-        interRowTable[innerX+outerX+bias][depth+delta] = {
+        let flag = !isLeaf && extra.expand, delta = flag ? 1+rightBias : 0
+        // if(lb > 0) interRowTable[innerX+outerX+bias][headerDepth-lb] = {...keyData, value: ''}
+        // if(rb > 0) interRowTable[innerX+outerX+bias][headerDepth+rb] = {...keyData, value: ''}
+        interRowTable[innerX+outerX+bias][keyDepth] = keyData
+        if(flag) interRowTable[innerX+outerX+bias][headerDepth] = {rowSpan: 1, colSpan: extra.depth}
+        interRowTable[innerX+outerX+bias][headerDepth+delta] = {
           value: rh.values[i],
           source,
-          rowSpan: 1, colSpan: flag ? 1 : extra.Depth,
+          rowSpan: 1, colSpan: flag ? 1 : extra.depth,
           isUsed: false, 
           isLeaf,
+          isKey: false,
           style: rh.style
         }
+        if(isLeaf && extra.expand) interRowTable[innerX+outerX+bias][headerDepth+1+rightBias] = {isDelete: true}
       // process cells unmerged
       } else if(!extra.gridMerge) {
-        if(key !== '') interRowTable[innerX+outerX+bias][keyDepth] = keyData
+        // let [lb, rb] = extra.layersBias[depth]
+        // if(lb > 0) interRowTable[innerX+outerX+bias][headerDepth-lb] = {...keyData, value: ''}
+        // if(rb > 0) interRowTable[innerX+outerX+bias][headerDepth+rb] = {...keyData, value: ''}
+        // console.log('attr', rh.attrName, lb, rb);
+        interRowTable[innerX+outerX+bias][keyDepth] = keyData
         interRowTable[innerX+outerX+bias][headerDepth] = {
           value: rh.values[i],
           source,
           rowSpan: 1, colSpan: 1,
           isUsed: false,
           isLeaf,
+          isKey: false,
           style: rh.style
         }
       // process cells merged
       } else {
         keyData.rowSpan = iterCount
         for(let j:number=0; j<iterCount; j++) {
-          if(key !== '') interRowTable[innerX+outerX+j+bias][keyDepth] = keyData
+          // if(leftBias > 0) interRowTable[innerX+outerX+bias][headerDepth-leftBias] = shallowCopy(keyData)
+          // if(rightBias > 0) interRowTable[innerX+outerX+bias][headerDepth+rightBias] = shallowCopy(keyData)
+          interRowTable[innerX+outerX+j+bias][keyDepth] = keyData
           interRowTable[innerX+outerX+j+bias][headerDepth] = {
             value: rh.values[i],
             source,
             rowSpan: iterCount, colSpan: 1,
             isUsed: false,
             isLeaf,
+            isKey: false,
             style: rh.style
           }
         }
@@ -348,12 +392,17 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
   let colSize = calc_head_size(columnHeader);
 
   if(tbClass == ROW_TABLE) {
+    let oldRowDepth = rowDepth
     let flag = get_structure_type(rowHeader)
     if(flag.entityMerge) { 
       rowSize = calc_head_size(rowHeader, true)
       rowDepth = flag.expand ? 2 : 1
     } 
-    rowDepth += calc_key_layer(rowHeader)
+    rowDepth += calc_overall_key_layer(rowHeader, flag.entityMerge)
+    console.log('total layer', calc_overall_key_layer(rowHeader, flag.entityMerge));
+    let layersBias = []
+    calc_each_key_layer(rowHeader, layersBias, 0, flag.entityMerge, ROW_TABLE)
+    console.log('layers bias', layersBias);
     let extra = {
       ...flag,
       preVal: {},
@@ -363,10 +412,11 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
       attrInfo,
       rootSpan: Array.from({length: rowHeader.length}, () => new Array()),
       rootIdList: Array.from({length: rowHeader.length}, () => new Array()),
-      Depth: calc_head_depth(rowHeader),
+      depth: oldRowDepth,
+      layersBias
     }
     interTable = Array.from({length: rowSize}, () => new Array(rowDepth)
-                  .fill({rowSpan: 1, colSpan: flag.entityMerge ? rowDepth : 1}))
+                  .fill(null).map(_ => ({rowSpan: 1, colSpan: 1})))
     gen_inter_row_table(interTable, rowHeader, extra, rowSize, 0, 0)
     let cell_length = 0
     if(flag.expand) {
@@ -376,13 +426,16 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
     // console.log('hhh', extra.cellTable);
     let maxLength = 0, tmpLength: number[] = []
     for(let i=0; i<rowSize; i++) {
-      processTable[i] = []
+      processTable[i] = [], tmpLength[i] = 0
       for(let j=0; j<rowDepth; j++) {
         let tmp = interTable[i][j]
         // if(tmp.isUsed || tmp.value===undefined) continue 
         if(tmp.isUsed) continue
-        if(flag.expand && processTable[i].length>0 && tmp.value===undefined) continue
-        if(flag.expand && !tmp.isLeaf) tmp.colSpan = cell_length
+        // if(flag.entityMerge && flag.expand && tmp.isLeaf && 
+        //   processTable[i].length>0 && tmp.value===undefined) continue
+        if(flag.entityMerge && flag.expand && tmp.isDelete) continue
+        if(flag.entityMerge && flag.expand && tmp.isLeaf===false &&
+           tmp.isKey===false) tmp.colSpan = cell_length
         if(tmp.value) {
           processTable[i].push({
             value: tmp.value, 
@@ -404,7 +457,8 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
           interTable[i+k][j].isUsed = true
         }
       }
-      tmpLength[i] = rowDepth
+      if(flag.entityMerge) for(let p of processTable[i]) tmpLength[i] += p.colSpan
+      else tmpLength[i] = rowDepth
       for(let c of extra.cellTable[i]) {
         tmpLength[i]++
         processTable[i].push({
@@ -415,20 +469,11 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
           style: c.style
         })
       }
-      console.log('len', tmpLength[i]);
+      console.log('len', tmpLength[i], tmpLength[i]-extra.cellTable[i].length);
       maxLength = maxLength>tmpLength[i] ? maxLength : tmpLength[i]
     }
     // fill empty unit
-    // let maxLength = 0
-    // for(let pt of processTable) {
-    //   let tmpLength = 0
-    //   for(let unit of pt) tmpLength += unit.colSpan
-    //   console.log('len', tmpLength);
-    //   maxLength = maxLength>tmpLength ? maxLength : tmpLength
-    // }
     for(let i=0; i<processTable.length; i++) {
-      // let resLength = maxLength
-      // for(let unit of pt) resLength -= unit.colSpan
       let resLength = maxLength - tmpLength[i]
       for(let j=0; j<resLength; j++) processTable[i].push({
           value: undefined as any,
@@ -473,7 +518,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
       preH += rootSpan[i][0]
     }
     console.log('XXX', processTable);
-    // console.log('YYY', finalTable);
+    console.log('YYY', finalTable);
   } else if(tbClass == COLUM_TABLE) {
     interTable = Array.from({length: colDepth}, () => new Array(colSize).fill({}))
     gen_inter_column_table(interTable, columnHeader, colSize, 0, 0)
