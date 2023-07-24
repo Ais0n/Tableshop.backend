@@ -39,3 +39,17 @@ export const shallowCopy = (origin) => {
   }
   return target;
 }
+
+export const transposeTable = (table) => {
+  let maxLength = 0, maxId = -1
+  for(let i=0; i<table.length; i++) {
+    if(maxLength < table[i].length) {
+      maxLength = table[i].length
+      maxId = i
+    }
+  }
+
+  return table[maxId].map((_, i) => {
+    return table.map(row => row[i])
+  })
+}
