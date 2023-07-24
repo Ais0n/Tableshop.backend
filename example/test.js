@@ -140,17 +140,17 @@ let spec4 = {
   rowHeader: [{
     attrName: "state",
     blockId: "3dca2581-a3c5-1fa2-edac-abc1c43123da",
-    gridMerge : false,
-    entityMerge: true,
+    gridMerge : true,
+    entityMerge: false,
     expand: true,
     facet: 2,
     key: {
-      // position: "left",
-      position: "embedded",
+      position: "left",
+      // position: "embedded",
       pattern: "1",
       isInherited: true
     },
-    blankLine: false,
+    blankLine: true,
     children: [{
       attrName: "year",
 			blockId: "1beaf109-f1f2-4cb3-acce-bca9b18275aa",
@@ -163,8 +163,8 @@ let spec4 = {
     }, {
 			function: "sum",
       key: {
-        // position: "right",
-        position: "embedded",
+        position: "right",
+        // position: "embedded",
         pattern: "I",
         isInherited: true
       },
@@ -221,9 +221,9 @@ let spec5 = {
   columnHeader: [{
     attrName: "state",
     blockId: "3dca2581-a3c5-1fa2-edac-abc1c43123da",
-    gridMerge : false,
-    entityMerge: false,
-    expand: false,
+    gridMerge : true,
+    entityMerge: true,
+    expand: true,
     facet: 2,
     key: {
       position: "top",
@@ -236,8 +236,8 @@ let spec5 = {
       attrName: "year",
 			blockId: "1beaf109-f1f2-4cb3-acce-bca9b18275aa",
       key: {
-        position: "top",
-      // position: "embedded",
+        // position: "top",
+      position: "embedded",
         pattern: "I",
         isInherited: true
       },
@@ -257,8 +257,8 @@ let spec5 = {
     entityMerge: false,
     facet: 1,
     key: {
-      position: "bottom",
-      // position: "embedded",
+      // position: "bottom",
+      position: "embedded",
       pattern: "A",
       isInherited: false
     },

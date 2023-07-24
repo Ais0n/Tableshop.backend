@@ -470,15 +470,6 @@ const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: nu
           }
         }
       }
-      // for(let j: number =0; j<iterCount; j++) {
-      //   interColumnTable[depth][innerY+outerY+j+bias] = {
-      //     value: ch.values[i],
-      //     source: ch.attrName ?? ch.function,
-      //     rowSpan: 1, colSpan: iterCount,
-      //     isUsed: false,
-      //     style: ch.style
-      //   }
-      // }
       innerY += iterCount
       delete extra.preVal[source]
     }
@@ -507,9 +498,18 @@ const gen_final_table = (table, tableClass, entityFlag) => {
     lenList.push(table[i].length)
     usedRecord.push(0)
   }
-  console.log('len', maxLength, lenList);
+  // console.log('len', maxLength, lenList);
   if(tableClass === ROW_TABLE) {
-    //TODO
+    for(let i=0; i<table.length; i++) {
+      if(lenList[i] === 0) table[i].push({
+        value: undefined as any,
+        source: undefined as any,
+        rowSpan: 1,
+        colSpan: entityFlag ? maxSpan : maxLength,
+        style: undefined as any
+      })
+    }
+    finalTable = table
   } else if(tableClass === COLUM_TABLE) {
     for(let i=0; i<maxLength; i++) {
       finalTable[i] = new Array()
@@ -551,7 +551,7 @@ const gen_final_table = (table, tableClass, entityFlag) => {
 
 const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, attrInfo}) => {
   let interTable, processTable: interCell[][] = []
-  // let finalTable: interCell[][] = []
+  let finalTable: interCell[][] = []
   let rowDepth = calc_head_depth(rowHeader);
   let colDepth = calc_head_depth(columnHeader);
   let rowSize = calc_head_size(rowHeader);
@@ -564,11 +564,17 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
       rowSize = calc_head_size(rowHeader, true)
       rowDepth = flag.expand ? 2 : 1
     } 
-    rowDepth += calc_overall_key_layer(rowHeader, flag.entityMerge, tbClass)
-    // console.log('total layer', calc_overall_key_layer(rowHeader, flag.entityMerge));
-    let layersBias = []
+    // rowDepth += calc_overall_key_layer(rowHeader, flag.entityMerge, tbClass)
+    let layersBias = [], totalLayer = 0
     calc_each_key_layer(rowHeader, layersBias, 0, flag.entityMerge, tbClass)
-    // console.log('layers bias', layersBias);
+    console.log('layers bias', layersBias);
+    if(flag.entityMerge) {
+      totalLayer = layersBias[0] + layersBias[1]
+    } else {
+      for(let lb of layersBias) totalLayer += lb[0] + lb[1]
+    }
+    console.log('total layer', totalLayer);
+    rowDepth += totalLayer
     let extra = {
       ...flag,
       preVal: {},
@@ -589,16 +595,12 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
       for(let ct of extra.cellTable) cell_length = (cell_length>ct.length) ? cell_length : ct.length
     }
     console.log('@@@', interTable);
-    // console.log('hhh', extra.cellTable);
     let maxLength = 0, tmpLength: number[] = []
     for(let i=0; i<rowSize; i++) {
       processTable[i] = [], tmpLength[i] = 0
       for(let j=0; j<rowDepth; j++) {
-        let tmp = interTable[i][j]
-        // if(tmp.isUsed || tmp.value===undefined) continue 
+        let tmp = interTable[i][j] 
         if(tmp.isUsed) continue
-        // if(flag.entityMerge && flag.expand && tmp.isLeaf && 
-        //   processTable[i].length>0 && tmp.value===undefined) continue
         if(flag.entityMerge && flag.expand && tmp.isDelete) continue
         if(flag.entityMerge && flag.expand && tmp.isLeaf===false &&
            tmp.isKey===false) tmp.colSpan = cell_length
@@ -662,7 +664,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
       }
     }
     // process facet structure
-    let finalTable: interCell[][] = [], rootSpan = extra.rootSpan
+    let rootSpan = extra.rootSpan
     let preH = 0, processH = 0
     for(let i=0; i<rowHeader.length; i++) {
       let facetLen = flag.facet[1][i]
@@ -685,6 +687,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
     }
     // console.log('XXX', processTable);
     console.log('YYY', finalTable);
+    console.log('final', gen_final_table(finalTable, tbClass, flag.entityMerge));
   } else if(tbClass == COLUM_TABLE) {
     let oldColDepth = colDepth
     let flag = get_structure_type(columnHeader)
@@ -692,11 +695,17 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
       colSize = calc_head_size(columnHeader, true)
       colDepth = flag.expand ? 2 : 1
     } 
-    colDepth += calc_overall_key_layer(columnHeader, flag.entityMerge, tbClass)
-    let layersBias = []
+    // colDepth += calc_overall_key_layer(columnHeader, flag.entityMerge, tbClass)
+    let layersBias = [], totalLayer = 0
     calc_each_key_layer(columnHeader, layersBias, 0, flag.entityMerge, tbClass)
-    console.log('total layer', calc_overall_key_layer(columnHeader, flag.entityMerge, tbClass));
+    if(flag.entityMerge) {
+      totalLayer = layersBias[0] + layersBias[1]
+    } else {
+      for(let lb of layersBias) totalLayer += lb[0] + lb[1]
+    }
+    colDepth += totalLayer
     console.log('layers bias', layersBias);
+    console.log('total layer', totalLayer);
     let extra = {
       ...flag,
       preVal: {},
@@ -786,7 +795,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
       }
     }
     // process facet structure
-    let finalTable: interCell[][] = [], rootSpan = extra.rootSpan
+    let rootSpan = extra.rootSpan
     let preH = 0, processH = 0
     for(let i=0; i<columnHeader.length; i++) {
       let facetLen = flag.facet[1][i]
