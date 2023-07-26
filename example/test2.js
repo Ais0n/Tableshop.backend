@@ -33,59 +33,354 @@ let spec = {
   rowHeader: [{
     attrName: "continent",
     blockId: "11111",
-    entityMerge: false,
+    entityMerge: true,
     children: [{
       attrName: "country",
-			blockId: "22222",
+      blockId: "22222",
       entityMerge: false,
-    }, {
-			function: "sum",
-			blockId: "33333",
-      entityMerge: false,
-		}],
+    }]
+    // }, {
+    //   function: "sum",
+    //   blockId: "33333",
+    //   entityMerge: false,
+    // }],
   }],
   columnHeader: [{
     attrName: "year",
     blockId: "44444",
-    entityMerge: false,
+    entityMerge: true,
     children: [{
       attrName: "season",
-			blockId: "55555",
+      blockId: "55555",
       entityMerge: false,
     }],
   }],
   cell: [{
-		attrName: "crime",
-		rowParentId: "22222",
-		colParentId: "55555",
-	}, {
-		attrName: "crime",
-		rowParentId: "33333",
-		colParentId: "55555",
-	}],
+    attrName: "crime",
+    rowParentId: "22222",
+    colParentId: "55555",
+  }, {
+    attrName: "crime",
+    rowParentId: "33333",
+    colParentId: "55555",
+  }],
   attrInfo: [{
-		name: "continent",
-		dataType: "categorical",
-		values: ["Asia", "Europe"],
-	}, {
-		name: "country",
-		dataType: "categorical",
-		values: ["CHN", "JPN", "GBR", "FRA"]
-	}, {
-		name: "year",
-		dataType: "categorical",
-		values: ["2019", "2020", "2021"]
-	}, {
+    name: "continent",
+    dataType: "categorical",
+    values: ["Asia", "Europe"],
+  }, {
+    name: "country",
+    dataType: "categorical",
+    values: ["CHN", "JPN", "GBR", "FRA"]
+  }, {
+    name: "year",
+    dataType: "categorical",
+    values: ["2019", "2020", "2021"]
+  }, {
     name: "season",
-		dataType: "categorical",
-		values: ["spr", "aut"],
+    dataType: "categorical",
+    values: ["spr", "aut"],
   }, {
     name: "crime",
-		dataType: "numerical",
-		values: [105, 110, 120, 125, 131, 150, 60, 80, 82, 92, 95, 110, 80, 92, 95, 104, 112, 136, 59, 63, 72, 79, 86, 90],
+    dataType: "numerical",
+    values: [105, 110, 120, 125, 131, 150, 60, 80, 82, 92, 95, 110, 80, 92, 95, 104, 112, 136, 59, 63, 72, 79, 86, 90],
   },],
   styles: undefined
 }
 
 // tableShop.utils.transform({data, spec})
-tableShop.utils.transform({data, spec:spec})
+tableShop.utils.transform({ data, spec: spec })
+
+// 参考输出
+let output = [
+  [
+    { // 最左上角的empty block
+      "rowspan": 2,
+      "colspan": 2,
+      "style": undefined,
+    },
+    {
+      "value": "2019",
+      "sourceBlockId": "44444",
+      "rowspan": 1,
+      "colspan": 2,
+      "style": undefined,
+    },
+    {
+      "value": "2020",
+      "sourceBlockId": "44444",
+      "rowspan": 1,
+      "colspan": 2,
+      "style": undefined,
+    },
+    {
+      "value": "2021",
+      "sourceBlockId": "44444",
+      "rowspan": 1,
+      "colspan": 2,
+      "style": undefined,
+    }
+  ], 
+  [
+    {
+      "value": "spr",
+      "sourceBlockId": "55555",
+      "rowspan": 1,
+      "colspan": 1,
+      "style": undefined,
+    },
+    {
+      "value": "aut",
+      "sourceBlockId": "55555",
+      "rowspan": 1,
+      "colspan": 1,
+      "style": undefined,
+    },
+    {
+      "value": "spr",
+      "sourceBlockId": "55555",
+      "rowspan": 1,
+      "colspan": 1,
+      "style": undefined,
+    },
+    {
+      "value": "aut",
+      "sourceBlockId": "55555",
+      "rowspan": 1,
+      "colspan": 1,
+      "style": undefined,
+    },
+    {
+      "value": "spr",
+      "sourceBlockId": "55555",
+      "rowspan": 1,
+      "colspan": 1,
+      "style": undefined,
+    },
+    {
+      "value": "aut",
+      "sourceBlockId": "55555",
+      "rowspan": 1,
+      "colspan": 1,
+      "style": undefined,
+    },
+  ],
+  [
+    {
+      "value": "Asia",
+      "sourceBlockId": "11111",
+      "rowspan": 2,
+      "colspan": 1,
+      "style": undefined,
+    },
+    {
+      "value": "CHN",
+      "sourceBlockId": "22222",
+      "rowspan": 1,
+      "colspan": 1,
+      "style": undefined,
+    },
+    {
+      "value": 105,
+      "sourceBlockId": "55555",
+      "rowspan": 1,
+      "colspan": 1,
+      "style": undefined,
+    },
+    {
+      "value": 110,
+      "sourceBlockId": "55555",
+      "rowspan": 1,
+      "colspan": 1,
+      "style": undefined,
+    },
+    {
+      "value": 120,
+      "sourceBlockId": "55555",
+      "rowspan": 1,
+      "colspan": 1,
+      "style": undefined,
+    },
+    {
+      "value": 125,
+      "sourceBlockId": "55555",
+      "rowspan": 1,
+      "colspan": 1,
+      "style": undefined,
+    },
+    {
+      "value": 131,
+      "sourceBlockId": "55555",
+      "rowspan": 1,
+      "colspan": 1,
+      "style": undefined,
+    },
+    {
+      "value": 150,
+      "sourceBlockId": "55555",
+      "rowspan": 1,
+      "colspan": 1,
+      "style": undefined,
+    },
+  ],
+  [
+    {
+      "value": "JPN",
+      "sourceBlockId": "22222",
+      "rowspan": 1,
+      "colspan": 1,
+      "style": undefined,
+    },
+    {
+      "value": 60,
+      "sourceBlockId": "55555",
+      "rowspan": 1,
+      "colspan": 1,
+      "style": undefined,
+    },
+    {
+      "value": 80,
+      "sourceBlockId": "55555",
+      "rowspan": 1,
+      "colspan": 1,
+      "style": undefined,
+    },
+    {
+      "value": 82,
+      "sourceBlockId": "55555",
+      "rowspan": 1,
+      "colspan": 1,
+      "style": undefined,
+    },
+    {
+      "value": 92,
+      "sourceBlockId": "55555",
+      "rowspan": 1,
+      "colspan": 1,
+      "style": undefined,
+    },
+    {
+      "value": 95,
+      "sourceBlockId": "55555",
+      "rowspan": 1,
+      "colspan": 1,
+      "style": undefined,
+    },
+    {
+      "value": 110,
+      "sourceBlockId": "55555",
+      "rowspan": 1,
+      "colspan": 1,
+      "style": undefined,
+    },
+  ],
+  [
+    {
+      "value": "Europe",
+      "sourceBlockId": "11111",
+      "rowspan": 2,
+      "colspan": 1,
+      "style": undefined,
+    },
+    {
+      "value": "GBR",
+      "sourceBlockId": "22222",
+      "rowspan": 1,
+      "colspan": 1,
+      "style": undefined,
+    },
+    {
+      "value": 80,
+      "sourceBlockId": "55555",
+      "rowspan": 1,
+      "colspan": 1,
+      "style": undefined,
+    },
+    {
+      "value": 92,
+      "sourceBlockId": "55555",
+      "rowspan": 1,
+      "colspan": 1,
+      "style": undefined,
+    },
+    {
+      "value": 95,
+      "sourceBlockId": "55555",
+      "rowspan": 1,
+      "colspan": 1,
+      "style": undefined,
+    },
+    {
+      "value": 104,
+      "sourceBlockId": "55555",
+      "rowspan": 1,
+      "colspan": 1,
+      "style": undefined,
+    },
+    {
+      "value": 112,
+      "sourceBlockId": "55555",
+      "rowspan": 1,
+      "colspan": 1,
+      "style": undefined,
+    },
+    {
+      "value": 136,
+      "sourceBlockId": "55555",
+      "rowspan": 1,
+      "colspan": 1,
+      "style": undefined,
+    },
+  ],
+  [
+    {
+      "value": "FRA",
+      "sourceBlockId": "22222",
+      "rowspan": 1,
+      "colspan": 1,
+      "style": undefined,
+    },
+    {
+      "value": 59,
+      "sourceBlockId": "55555",
+      "rowspan": 1,
+      "colspan": 1,
+      "style": undefined,
+    },
+    {
+      "value": 63,
+      "sourceBlockId": "55555",
+      "rowspan": 1,
+      "colspan": 1,
+      "style": undefined,
+    },
+    {
+      "value": 72,
+      "sourceBlockId": "55555",
+      "rowspan": 1,
+      "colspan": 1,
+      "style": undefined,
+    },
+    {
+      "value": 79,
+      "sourceBlockId": "55555",
+      "rowspan": 1,
+      "colspan": 1,
+      "style": undefined,
+    },
+    {
+      "value": 86,
+      "sourceBlockId": "55555",
+      "rowspan": 1,
+      "colspan": 1,
+      "style": undefined,
+    },
+    {
+      "value": 90,
+      "sourceBlockId": "55555",
+      "rowspan": 1,
+      "colspan": 1,
+      "style": undefined,
+    },
+  ],
+]
