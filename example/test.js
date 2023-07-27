@@ -9,6 +9,28 @@ let data = {
   ],
 }
 
+let data2 = {
+  name: "crime",
+  values: [
+    { state: "Alabama", year: 2004, sex: 'Boy' , age: 10, crime: 4029.3 },
+    { state: "Alabama", year: 2005, sex: 'Boy' , age: 10, crime: 3900 },
+    { state: "Alaska" , year: 2004, sex: 'Boy' , age: 10, crime: 3370.9 },
+    { state: "Alaska" , year: 2005, sex: 'Boy' , age: 10, crime: 3615 },
+    { state: "Alabama", year: 2004, sex: 'Girl', age: 10, crime: 4029.3 },
+    { state: "Alabama", year: 2005, sex: 'Girl', age: 10, crime: 3900 },
+    { state: "Alaska" , year: 2004, sex: 'Girl', age: 10, crime: 3370.9 },
+    { state: "Alaska" , year: 2005, sex: 'Girl', age: 10, crime: 3615 },
+    { state: "Alabama", year: 2004, sex: 'Boy' , age: 2, crime: 4029.3 },
+    { state: "Alabama", year: 2005, sex: 'Boy' , age: 2, crime: 3900 },
+    { state: "Alaska" , year: 2004, sex: 'Boy' , age: 2, crime: 3370.9 },
+    { state: "Alaska" , year: 2005, sex: 'Boy' , age: 2, crime: 3615 },
+    { state: "Alabama", year: 2004, sex: 'Girl', age: 2, crime: 4029.3 },
+    { state: "Alabama", year: 2005, sex: 'Girl', age: 2, crime: 3900 },
+    { state: "Alaska" , year: 2004, sex: 'Girl', age: 2, crime: 3370.9 },
+    { state: "Alaska" , year: 2005, sex: 'Girl', age: 2, crime: 3615 },
+  ],
+}
+
 let spec = {
   rowHeader: [{
     attrName: "state",
@@ -265,6 +287,130 @@ let spec5 = {
   }],
   cell: [{
 		attrName: "crime",
+		rowParentId: undefined,
+		colParentId: "1beaf109-f1f2-4cb3-acce-bca9b18275aa",
+	}, {
+		attrName: "crime",
+		rowParentId: undefined,
+		colParentId: "186f15a3-7e92-466d-9f8c-ef60bbe96768",
+	},{
+		attrName: "crime",
+		rowParentId: undefined,
+		colParentId: "1beaf109-f1f2-4cb3-acce-bca9b18275aa",
+	}],
+  attrInfo: [{
+		name: "state",
+		dataType: "categorical",
+		values: ["Alabama", "Alaska"],
+	}, {
+		name: "year",
+		dataType: "categorical",
+		values: [2004, 2005]
+	}, {
+		name: "crime",
+		dataType: "numerical",
+		values: [4029.3, 3900, 3370.9, 3615]
+	}, {
+    name: "test",
+		dataType: "categorical",
+		values: ["KKK"],
+  }],
+  styles: undefined
+}
+
+let spec6 = {
+  rowHeader: [{
+    attrName: "state",
+    blockId: "3dca2581-a3c5-1fa2-edac-abc1c43123da",
+    gridMerge : true,
+    entityMerge: false,
+    expand: true,
+    facet: 2,
+    key: {
+      position: "left",
+      // position: "embedded",
+      pattern: "1",
+      isInherited: true
+    },
+    blankLine: true,
+    children: [{
+      attrName: "year",
+			blockId: "1beaf109-f1f2-4cb3-acce-bca9b18275aa",
+      key: {
+        // position: "left",
+      position: "embedded",
+        pattern: "I",
+        isInherited: true
+      },
+    }, {
+			function: "sum",
+      key: {
+        position: "right",
+        // position: "embedded",
+        pattern: "I",
+        isInherited: true
+      },
+			blockId: "186f15a3-7e92-466d-9f8c-ef60bbe96768",
+		}],
+  }, {
+    attrName: "test",
+    blockId: "3dca2581-a3c5-1fa2-edac-abc1c51723da",
+    entityMerge: false,
+    facet: 1,
+    key: {
+      // position: "right",
+      position: "embedded",
+      pattern: "A",
+      isInherited: false
+    },
+  }],
+  columnHeader: [{
+    attrName: "state",
+    blockId: "3dca2581-a3c5-1fa2-edac-abc1c43123da",
+    gridMerge : true,
+    entityMerge: true,
+    expand: true,
+    facet: 2,
+    key: {
+      position: "top",
+      // position: "embedded",
+      pattern: "1",
+      isInherited: true
+    },
+    blankLine: true,
+    children: [{
+      attrName: "year",
+			blockId: "1beaf109-f1f2-4cb3-acce-bca9b18275aa",
+      key: {
+        // position: "top",
+      position: "embedded",
+        pattern: "I",
+        isInherited: true
+      },
+    }, {
+			function: "sum",
+      key: {
+        position: "bottom",
+        // position: "embedded",
+        pattern: "I",
+        isInherited: true
+      },
+			blockId: "186f15a3-7e92-466d-9f8c-ef60bbe96768",
+		}],
+  }, {
+    attrName: "test",
+    blockId: "3dca2581-a3c5-1fa2-edac-abc1c51723da",
+    entityMerge: false,
+    facet: 1,
+    key: {
+      // position: "bottom",
+      position: "embedded",
+      pattern: "A",
+      isInherited: false
+    },
+  }],
+  cell: [{
+		attrName: "crime",
 		rowParentId: "1beaf109-f1f2-4cb3-acce-bca9b18275aa",
 		colParentId: undefined,
 	}, {
@@ -296,5 +442,5 @@ let spec5 = {
   styles: undefined
 }
 
-// tableShop.utils.transform({data, spec})
 tableShop.utils.transform({data, spec:spec5})
+// tableShop.utils.transform({data:data2, spec:spec6})

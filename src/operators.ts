@@ -449,7 +449,7 @@ const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: nu
       // process cell unit
       if(isLeaf) {
         for(let c of extra.cell) {
-          if(c.rowParentId == ch.blockId) {
+          if(c.colParentId == ch.blockId) {
             // process function cell
             if(ch.function) {
               if(!agg_type_check(extra.attrInfo, c.attrName)) throw new Error("Function can only be used to numerical>")
@@ -567,14 +567,14 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
     // rowDepth += calc_overall_key_layer(rowHeader, flag.entityMerge, tbClass)
     let layersBias = [], totalLayer = 0
     calc_each_key_layer(rowHeader, layersBias, 0, flag.entityMerge, tbClass)
-    console.log('layers bias', layersBias);
     if(flag.entityMerge) {
       totalLayer = layersBias[0] + layersBias[1]
     } else {
       for(let lb of layersBias) totalLayer += lb[0] + lb[1]
     }
-    console.log('total layer', totalLayer);
     rowDepth += totalLayer
+    console.log('layers bias', layersBias);
+    console.log('total layer', totalLayer);
     let extra = {
       ...flag,
       preVal: {},
@@ -820,8 +820,53 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
     console.log('YY', finalTable);
     console.log('final',gen_final_table(finalTable, tbClass, flag.entityMerge))
   } else {
-    interTable = Array.from({length: rowSize+colDepth}, () => new Array(rowDepth+colSize).fill({}))
-    gen_inter_cross_table(interTable, rowHeader, columnHeader, rowSize, rowDepth, colSize, colDepth)
+    let oldRowDepth = rowDepth, oldColDepth = colDepth
+    let rowFlag = get_structure_type(rowHeader), colFlag = get_structure_type(columnHeader)
+    
+    // Row Header Process
+    if(rowFlag.entityMerge) {
+      rowSize = calc_head_size(rowHeader, true)
+      rowDepth = rowFlag.expand ? 2 : 1
+    }
+    let rowLayersBias = [], rowTotalLayer = 0
+    calc_each_key_layer(rowHeader, rowLayersBias, 0, rowFlag.entityMerge, ROW_TABLE)
+    if(rowFlag.entityMerge) {
+      rowTotalLayer = rowLayersBias[0] + rowLayersBias[1]
+    } else {
+      for(let lb of rowLayersBias) rowTotalLayer += lb[0] + lb[1]
+    }
+    rowDepth += rowTotalLayer
+    let rowExtra = {
+      ...rowFlag,
+      data: data.values,
+      cell, 
+      cellTable: Array.from({length: rowSize}, () => new Array()),
+      attrInfo,
+      rootSpan: Array.from({length: rowHeader.length}, () => new Array()),
+      rootIdList: Array.from({length: rowHeader.length}, () => new Array()),
+      depth: oldRowDepth,
+      layersBias: rowLayersBias
+    }
+
+    // Column Header Process
+    if(colFlag.entityMerge) { 
+      colSize = calc_head_size(columnHeader, true)
+      colDepth = colFlag.expand ? 2 : 1
+    } 
+    let colLayersBias = [], colTotalLayer = 0
+    calc_each_key_layer(columnHeader, colLayersBias, 0, colFlag.entityMerge, COLUM_TABLE)
+    if(colFlag.entityMerge) {
+      colTotalLayer = colLayersBias[0] + colLayersBias[1]
+    } else {
+      for(let lb of colLayersBias) colTotalLayer += lb[0] + lb[1]
+    }
+    colDepth += colTotalLayer
+    
+    interTable = Array.from({length: rowSize+colDepth}, () => new Array(rowDepth+colSize)
+                  .fill(null).map(_ => ({rowSpan: 1, colSpan: 1})))
+    gen_inter_row_table(interTable, rowHeader, rowExtra, rowSize, 0, 0, colDepth)
+
+    // gen_inter_cross_table(interTable, rowHeader, columnHeader, rowSize, rowDepth, colSize, colDepth)
     console.log('@', interTable);
   }
 
