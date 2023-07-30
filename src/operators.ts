@@ -16,7 +16,6 @@ const header_fill = (attrInfo: AttrInfo, header?: HeaderChannel): void => {
     for(let hb of header) {
       hb.entityMerge = hb.entityMerge ?? false
       hb.gridMerge = hb.gridMerge ?? true
-      hb.expand = hb.expand ?? false 
       hb.facet = hb.facet ?? 1
       hb.blankLine = hb.blankLine ?? false 
       if(hb.key && Object.keys(hb.key).length === 0) hb.key = undefined
@@ -59,32 +58,45 @@ const spec_init = (task: Spec): void => {
 // compute dimension(depth) of rowHeader/columnHeader
 const calc_head_depth = (channel?: HeaderChannel): number => {
   if(!channel || channel.length == 0) return 0;
-  let depth = 1;
+  let depth = 1
   for(let hb of channel) {
     if (hb.children) {
+      let selfDepth = hb.entityMerge ? 0 : 1
       let d:number = calc_head_depth(hb.children);
-      depth = (d+1 > depth) ? d+1 : depth;
+      depth = (d+selfDepth > depth) ? d+selfDepth : depth;
     }
   }
   return depth;
 }
 
 // compute value counts(size) of rowHeader/columnHeader
-const calc_head_size = (channel?: HeaderChannel, entityFlag: boolean = false): number => {
+const calc_head_size = (channel?: HeaderChannel): number => {
   if (!channel || channel.length == 0) return 0
   let size = 0
   for(let hb of channel) {
-    if(entityFlag) {
+    if(hb.entityMerge) {
       size += hb.values!.length
       for(let _ of hb.values!) {
-        size += calc_head_size(hb.children, entityFlag)
+        size += calc_head_size(hb.children)
       }
     } else {
       let s = hb.children ? calc_head_size(hb.children) : 1
       size += s * (hb.values!.length)
-    }
+    } 
   }
   return size
+}
+
+// compute each depth span length
+const calc_head_span = (channel?: HeaderChannel, headSpan: any = [], depth = 0, d = 0, preLen = 1) => {
+  if (!channel || channel.length == 0) return 0
+  if(headSpan[depth][d]) headSpan[depth][d] = headSpan[depth][d]<preLen ? preLen : headSpan[depth][d]
+  else headSpan[depth][d] = preLen
+  for(let hb of channel) {
+    let delta = hb.entityMerge ? 0 : 1
+    let len = hb.entityMerge ? preLen+1 : 1
+    calc_head_span(hb.children, headSpan, depth+delta, d+1, len)
+  }
 }
 
 const calc_overall_key_layer = (channel?: HeaderChannel, entityFlag = false, tableClass = ROW_TABLE): number => {
@@ -124,24 +136,16 @@ const calc_current_key_layer = (channel: HeaderChannel, tableClass: string) => {
   return [beforeLayer+afterLayer, beforeBias, afterBias]
 }
 
-const calc_each_key_layer = (channel?: HeaderChannel, layersBias: any = [], depth = 0, entityFlag = false, tableClass = ROW_TABLE) => {
+const calc_each_key_layer = (channel?: HeaderChannel, layersBias: any = [], depth = 0, tableClass = ROW_TABLE) => {
   if (!channel || channel.length == 0) return 
-  let [_, leftBias, rightBias] = calc_current_key_layer(channel, tableClass), lyb
-  if(entityFlag) {
-    if(layersBias.length === 0) layersBias[0] = leftBias, layersBias[1] = rightBias
-    else {
-      layersBias[0] = layersBias[0]<leftBias ? leftBias : layersBias[0]
-      layersBias[1] = layersBias[1]<rightBias ? rightBias : layersBias[1]
-    }
-  } else {
-    if(layersBias[depth] === undefined) layersBias[depth] = [leftBias, rightBias]
-    else {
-      layersBias[depth][0] = layersBias[depth][0]<leftBias ? leftBias : layersBias[depth][0]
-      layersBias[depth][1] = layersBias[depth][1]<rightBias ? rightBias : layersBias[depth][1]
-    }
+  let [_, leftBias, rightBias] = calc_current_key_layer(channel, tableClass)
+  if(layersBias[depth] === undefined) layersBias[depth] = [leftBias, rightBias]
+  else {
+    layersBias[depth][0] = layersBias[depth][0]<leftBias ? leftBias : layersBias[depth][0]
+    layersBias[depth][1] = layersBias[depth][1]<rightBias ? rightBias : layersBias[depth][1]
   }
   for(let hb of channel) {
-    calc_each_key_layer(hb.children, layersBias, depth+1, entityFlag, tableClass)
+    calc_each_key_layer(hb.children, layersBias, depth+(hb.entityMerge ? 0 : 1), tableClass)
   }
 }
 
@@ -151,7 +155,6 @@ const get_structure_type = (channel?: HeaderChannel) => {
   let hb0: HeaderBlock = channel[0], facetList: number[][] = Array.from({length:2}, () => new Array())
   let blankList: boolean[] = new Array()
   for(let hb of channel) {
-    if(hb.values!.length % hb.facet! !== 0) throw new Error("Facet can not be divided exactly")
     facetList[0].push(hb.facet!)
     facetList[1].push(hb.values!.length / hb.facet!)
     blankList.push(hb.blankLine!)
@@ -159,10 +162,13 @@ const get_structure_type = (channel?: HeaderChannel) => {
   return {
     entityMerge: hb0.entityMerge,
     gridMerge : hb0.gridMerge,
-    expand: hb0.expand,
     facet: facetList,
     blankLine: blankList
   }
+}
+
+const get_block_structure = (block: HeaderBlock) => {
+
 }
 
 const get_cell_val = (preVal, data, key) => {
@@ -228,21 +234,16 @@ const agg_type_check = (attrInfo: AttrInfo, attrName: string): boolean => {
 
 // generate intermediate row table
 const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, depth: number, 
-  outerX: number, bias = 0, isRoot = true, preKey = '', keyBias = 0): number => {
+  outerX: number, bias = 0, isPreMerge = false, isRoot = true, preKey = '', keyBias = 0): number => {
   if(rowHeader === undefined) return 1
   let innerX = 0, rhId = -1
   let leftBias = 0, rightBias = 0
-  if(extra.entityMerge) {
-    let [lb, rb] = extra.layersBias
-    leftBias = lb, rightBias = rb
-  } else {
-    let [lb, rb] = extra.layersBias[depth]
-    leftBias = lb, rightBias = rb
-  }
+  let [lb, rb] = extra.layersBias[depth]
+  leftBias = lb, rightBias = rb
   let currentKeyLayer = leftBias + rightBias
   for(let rh of rowHeader) {
     let isLeaf = rh.children ? false : true
-    let source = rh.attrName ?? rh.function
+    let sourceBlockId = rh.blockId, source = rh.attrName ?? rh.function
     let headerDepth = depth + keyBias + leftBias, keyDepth = headerDepth
     let isKeyEmbedded = false
     if(rh.key && rh.key.position === Position.LEFT) keyDepth = headerDepth - 1
@@ -252,6 +253,7 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
     for(let i=0; i<rh.values.length; i++) {
       let iterCount: number, key = rh.key ? get_key(rh.key, i, preKey) : ''
       let headValue = isKeyEmbedded ? key+ ' ' + rh.values[i] : rh.values[i]
+      let span = extra.headSpan[depth]
       let keyData = {
         value: key, 
         source: '@KEY',
@@ -262,12 +264,12 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
         style: 'KEY STYLE'
       }
       extra.preVal[source] = rh.values[i]
-      if(extra.entityMerge) {
+      if(rh.entityMerge) {
         iterCount = gen_inter_row_table(interRowTable, rh.children, extra, width, depth, 
-          outerX+innerX+1, bias, false, key, keyBias)
+          outerX+innerX+1, bias, rh.entityMerge, false, key, keyBias)
       } else {
         iterCount = gen_inter_row_table(interRowTable, rh.children, extra, width, depth+1, 
-          outerX+innerX, bias, false, key, currentKeyLayer+keyBias)
+          outerX+innerX, bias, rh.entityMerge, false, key, currentKeyLayer+keyBias)
       }
       if(innerX+outerX+iterCount > width) {
         console.log('Error', innerX, outerX, iterCount);
@@ -278,27 +280,24 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
         extra.rootIdList[rhId].push(innerX)
       }
       // process entities merged
-      if(extra.entityMerge) {
-        let flag = !isLeaf && extra.expand, delta = flag ? 1+rightBias : 0
+      if(rh.entityMerge) {
         interRowTable[innerX+outerX+bias][keyDepth] = keyData
-        if(flag) interRowTable[innerX+outerX+bias][headerDepth] = {rowSpan: 1, colSpan: extra.depth}
-        if(isLeaf && extra.expand) interRowTable[innerX+outerX+bias][headerDepth+1+rightBias] = {isDelete: true}
-        interRowTable[innerX+outerX+bias][headerDepth+delta] = {
+        interRowTable[innerX+outerX+bias][headerDepth] = {
           value: headValue,
           source,
-          rowSpan: 1, colSpan: flag ? 1 : extra.depth,
+          rowSpan: 1, colSpan: span,
           isUsed: false, 
           isLeaf,
           isKey: false,
           style: rh.style
         }
       // process cells unmerged
-      } else if(!extra.gridMerge) {
+      } else if(!rh.gridMerge) {
         interRowTable[innerX+outerX+bias][keyDepth] = keyData
         interRowTable[innerX+outerX+bias][headerDepth] = {
           value: headValue,
           source,
-          rowSpan: 1, colSpan: 1,
+          rowSpan: 1, colSpan: span,
           isUsed: false,
           isLeaf,
           isKey: false,
@@ -312,7 +311,7 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
           interRowTable[innerX+outerX+j+bias][headerDepth] = {
             value: headValue,
             source,
-            rowSpan: iterCount, colSpan: 1,
+            rowSpan: iterCount, colSpan: span,
             isUsed: false,
             isLeaf,
             isKey: false,
@@ -348,7 +347,7 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
       delete extra.preVal[source]
     }
   }
-  return innerX + (extra.entityMerge ? 1 : 0) 
+  return innerX + (isPreMerge ? 1 : 0) 
 }
 
 // generate intermediate column table
@@ -484,73 +483,184 @@ const gen_inter_cross_table = (interCrossTable, rowHeader, columnHeader, rowWidt
   gen_inter_column_table(interCrossTable, columnHeader, colWidth, 0, 0, rowDepth)
 }
 
+const gen_blank_facet_table = (rawTable, header, info, depth, outerX, 
+  bias = 0, isPreMerge = false, keyBias = 0) => {
+  if(header === undefined) return [1, info.cellLength, 1, 0]
+  let innerX = 0, maxLen = info.cellLength, facetSpan = 0, blankLine = 0
+  let [beforeBias, afterBias] = info.layersBias[depth]
+  let keyLayer = beforeBias+afterBias
+  for(let hd of header) {
+    let start = innerX + outerX + bias, subFacetSpan = 0
+    for(let i=0; i<hd.values.length; i++) {
+      let iterCount = 1, len = info.cellLength, tmpFacetSpan = 1, blank = 0
+      let x = innerX + outerX + bias, y = depth + keyBias
+      if(hd.entityMerge) {
+        [iterCount, len, tmpFacetSpan, blank] = gen_blank_facet_table(rawTable, hd.children, info, depth, outerX+innerX+1, 
+          bias, hd.entityMerge, keyBias)
+      } else {
+        [iterCount, len, tmpFacetSpan, blank] = gen_blank_facet_table(rawTable, hd.children, info, depth+1, outerX+innerX, 
+          bias, hd.entityMerge, keyBias+keyLayer)
+      }
+      
+      for(let j=0; j<iterCount; j++) {
+        // console.log('xxxxxx',  info.oldTable[x+j][y+beforeBias].value, x+j, y+beforeBias);
+        if(rawTable[x+j][y+beforeBias] !== undefined && !hd.entityMerge && hd.gridMerge) {
+          if(info.tbClass === ROW_TABLE) {
+            if(beforeBias > 0) rawTable[x+j][y].rowSpan = tmpFacetSpan + blank
+            rawTable[x+j][y+beforeBias].rowSpan = tmpFacetSpan + blank
+            if(afterBias > 0) rawTable[x+j][y+beforeBias+afterBias].rowSpan = tmpFacetSpan + blank
+          }
+          else if(info.tbClass === COLUM_TABLE) {
+            if(beforeBias > 0) rawTable[x+j][y].colSpan = tmpFacetSpan + blank
+            rawTable[x+j][y+beforeBias].colSpan = tmpFacetSpan + blank
+            if(afterBias > 0) rawTable[x+j][y+beforeBias+afterBias].colSpan = tmpFacetSpan + blank
+          }          
+        }
+        if(rawTable[x+j][y+beforeBias] !== undefined && j===0 && hd.blankLine) {
+          if(beforeBias > 0) rawTable[x+j][y].hasBlank = true
+          rawTable[x+j][y+beforeBias].hasBlank = true
+          if(afterBias > 0) rawTable[x+j][y+beforeBias+afterBias].hasBlank = true
+        }
+      }
+      if(hd.facet > 1) {
+        let copyLen = len - y
+        let group = i % hd.facet
+        // console.log('Bi', group, innerX, hd.facet);
+        for(let j=0; j<iterCount; j++) {
+          for(let k=0; k<copyLen; k++) {
+            let tarX = start + Math.floor(i/hd.facet)*iterCount + j, tarY = y + k + group*copyLen
+            rawTable[tarX][tarY] = rawTable[x+j][y+k]
+            if(rawTable[x+j][y+k] !== undefined && (tarX !== x+j || tarY !== y+k)) 
+              rawTable[x+j][y+k] = {isDelete: true}
+            // console.log('Ai', start+Math.floor(i/hd.facet)*iterCount+j, y+k+group*copyLen, x+j, y+k);
+          }
+        }
+        let delta = (hd.facet-1) * copyLen
+        len += delta
+      }
+
+      innerX += iterCount
+      if(maxLen < len) maxLen = len
+      subFacetSpan += tmpFacetSpan
+    }
+    if(hd.facet>1) subFacetSpan = Math.ceil(subFacetSpan / hd.facet)
+    facetSpan += subFacetSpan
+    if(hd.blankLine) blankLine += Math.ceil(hd.values.length / hd.facet)
+  }
+  let delta1 = isPreMerge ? 1 : 0, delta2 = isPreMerge?0:1
+  return [innerX+delta1, maxLen+delta2, facetSpan+delta1, blankLine]
+}
+
 const gen_final_table = (table, tableClass, entityFlag) => {
   let finalTable = new Array(), lenList = new Array(), usedRecord = new Array()
   let maxLength = 0, maxSpan = 0
+  // for(let i=0; i<table.length; i++) {
+  //   if(maxLength < table[i].length) maxLength = table[i].length
+  //   if(entityFlag) {
+  //     let tmpSpan = 0
+  //     if(tableClass === ROW_TABLE) for(let t of table[i]) tmpSpan += t.colSpan
+  //     else if(tableClass === COLUM_TABLE) for(let t of table[i]) tmpSpan += t.rowSpan
+  //     maxSpan = maxSpan > tmpSpan ? maxSpan : tmpSpan
+  //   }
+  //   lenList.push(table[i].length)
+  //   usedRecord.push(0)
+  // }
+  let h = 0, oldLen = table.length
+  let spanList = new Array()
+  for(let i=0; i<oldLen; i++) {
+    let isDelete = true
+    for(let j=0; j<table[h].length; j++) {
+      if(table[h][j]===undefined || table[h][j].isDelete) continue
+      if(tableClass === ROW_TABLE) spanList[j] = table[h][j].colSpan
+      else if(tableClass === COLUM_TABLE) spanList[j] = table[h][j].rowSpan
+      isDelete = false
+    }
+    if(isDelete) table.splice(h, 1)
+    else {
+      if(table[h].length > maxLength) maxLength = table[h].length
+      h++
+    }
+  }
+  console.log('span list', spanList);
+  // fill different length
+  for(let t of table) {
+    let resLen = maxLength - t.length, tmp = t.length 
+    for(let i=0; i<resLen; i++) {
+      if(tableClass === ROW_TABLE) t.push({rowSpan: 1, colSpan: spanList[i+tmp]})
+      else if(tableClass === COLUM_TABLE) t.push({rowSpan: spanList[i+tmp], colSpan: 1})
+    }
+  }
+  let locMap = new Array(maxLength).fill(0)
   for(let i=0; i<table.length; i++) {
-    if(maxLength < table[i].length) maxLength = table[i].length
-    if(entityFlag) {
-      let tmpSpan = 0
-      if(tableClass === ROW_TABLE) for(let t of table[i]) tmpSpan += t.colSpan
-      else if(tableClass === COLUM_TABLE) for(let t of table[i]) tmpSpan += t.rowSpan
-      maxSpan = maxSpan > tmpSpan ? maxSpan : tmpSpan
-    }
-    lenList.push(table[i].length)
-    usedRecord.push(0)
-  }
-  // console.log('len', maxLength, lenList);
-  if(tableClass === ROW_TABLE) {
-    for(let i=0; i<table.length; i++) {
-      if(lenList[i] === 0) table[i].push({
-        value: undefined as any,
-        source: undefined as any,
-        rowSpan: 1,
-        colSpan: entityFlag ? maxSpan : maxLength,
-        style: undefined as any
-      })
-    }
-    finalTable = table
-  } else if(tableClass === COLUM_TABLE) {
-    for(let i=0; i<maxLength; i++) {
-      finalTable[i] = new Array()
-      let addCnt = 0
-      for(let j=0; j<table.length; j++) {
-        if(lenList[j] === 0) {
-          finalTable[i].push({
-            value: undefined as any,
-            source: undefined as any,
-            rowSpan: entityFlag ? maxSpan : maxLength,
-            colSpan: 1,
-            style: undefined as any
-          })
-          lenList[j]--
-          addCnt++
+    let t = table[i], isBlank = false
+    if(finalTable[i] === undefined) finalTable[i] = new Array()
+    for(let j=0; j<table[i].length; j++) {
+      if(table[i][j] === undefined) {
+        if(i+1 >= table.length) throw new Error("Final Table: Over Boundary")
+        if(isBlank) {
+          if(finalTable[locMap[j]] === undefined) finalTable[locMap[j]] = new Array()
+          finalTable[locMap[j]].push({ rowSpan: 1, colSpan: table[i+1][j].colSpan})
+          locMap[j]++
         }
-        let tmp = usedRecord[j]
-        if(lenList[j]>0 && tmp<lenList[j]) {
-          // console.log('kkk', i, j, usedRecord);
-          usedRecord[j]++
-          if(table[j][tmp].isSkip) continue
-          finalTable[i].push(table[j][tmp])
-          addCnt++
-          if(entityFlag && table[j][tmp].rowSpan>1) {
-            for(let k=1; k<table[j][tmp].rowSpan; k++) {
-              table[j].splice(tmp+1, 0, {isSkip: true})
-              lenList[j]++
-            }
-          } 
-          j += table[j][tmp].colSpan-1
+        finalTable[locMap[j]].push({rowSpan: 1, colSpan: table[i+1][j].colSpan})
+        locMap[j]++
+      } else if(!table[i][j].isDelete){
+        if(table[i][j].hasBlank) {
+          delete table[i][j].hasBlank
+          isBlank = true
         }
+        if(isBlank) {
+          if(finalTable[locMap[j]] === undefined) finalTable[locMap[j]] = new Array()
+          finalTable[locMap[j]].push({ rowSpan: 1, colSpan: table[i][j].colSpan})
+          locMap[j]++
+        }
+        if(finalTable[locMap[j]] === undefined) finalTable[locMap[j]] = new Array()
+        finalTable[locMap[j]].push(table[i][j])
+        locMap[j] += table[i][j].rowSpan
       }
-      // console.log('cnt', addCnt);
-      if(addCnt === 0) i--
     }
   }
+  // if(tableClass === COLUM_TABLE) {
+  //   for(let i=0; i<maxLength; i++) {
+  //     finalTable[i] = new Array()
+  //     let addCnt = 0
+  //     for(let j=0; j<table.length; j++) {
+  //       if(lenList[j] === 0) {
+  //         finalTable[i].push({
+  //           value: undefined as any,
+  //           source: undefined as any,
+  //           rowSpan: entityFlag ? maxSpan : maxLength,
+  //           colSpan: 1,
+  //           style: undefined as any
+  //         })
+  //         lenList[j]--
+  //         addCnt++
+  //       }
+  //       let tmp = usedRecord[j]
+  //       if(lenList[j]>0 && tmp<lenList[j]) {
+  //         // console.log('kkk', i, j, usedRecord);
+  //         usedRecord[j]++
+  //         if(table[j][tmp].isSkip) continue
+  //         finalTable[i].push(table[j][tmp])
+  //         addCnt++
+  //         if(entityFlag && table[j][tmp].rowSpan>1) {
+  //           for(let k=1; k<table[j][tmp].rowSpan; k++) {
+  //             table[j].splice(tmp+1, 0, {isSkip: true})
+  //             lenList[j]++
+  //           }
+  //         } 
+  //         j += table[j][tmp].colSpan-1
+  //       }
+  //     }
+  //     // console.log('cnt', addCnt);
+  //     if(addCnt === 0) i--
+  //   }
+  // }
   return finalTable
 }
 
 const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, attrInfo}) => {
-  let interTable, processTable: interCell[][] = []
+  let interTable, processTable = new Array()
   let finalTable: interCell[][] = []
   let rowDepth = calc_head_depth(rowHeader);
   let colDepth = calc_head_depth(columnHeader);
@@ -560,21 +670,28 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
   if(tbClass == ROW_TABLE) {
     let oldRowDepth = rowDepth
     let flag = get_structure_type(rowHeader)
-    if(flag.entityMerge) { 
-      rowSize = calc_head_size(rowHeader, true)
-      rowDepth = flag.expand ? 2 : 1
-    } 
-    // rowDepth += calc_overall_key_layer(rowHeader, flag.entityMerge, tbClass)
-    let layersBias = [], totalLayer = 0
-    calc_each_key_layer(rowHeader, layersBias, 0, flag.entityMerge, tbClass)
-    if(flag.entityMerge) {
-      totalLayer = layersBias[0] + layersBias[1]
-    } else {
-      for(let lb of layersBias) totalLayer += lb[0] + lb[1]
+    let headTmpSpan = Array.from({length: rowDepth}, () => ({}))
+    let headSpan = new Array(rowDepth).fill(1)
+    calc_head_span(rowHeader, headTmpSpan)
+    console.log('head tmp span', headTmpSpan);
+    for(let i=0; i<headTmpSpan.length; i++) {
+      let hts = headTmpSpan[i]
+      for(let k in hts) if(hts[k] > headSpan[i]) headSpan[i] = hts[k]
     }
+    console.log('head span', headSpan);
+    let layersBias = [], totalLayer = 0
+    calc_each_key_layer(rowHeader, layersBias, 0, tbClass)
+    for(let lb of layersBias) totalLayer += lb[0] + lb[1]
     rowDepth += totalLayer
     console.log('layers bias', layersBias);
     console.log('total layer', totalLayer);
+    let headKeySpan = new Array()
+    for(let i=0; i<headSpan.length; i++) {
+      if(layersBias[i][0] > 0) headKeySpan.push(1)
+      headKeySpan.push(headSpan[i])
+      if(layersBias[i][1] > 0) headKeySpan.push(1)
+    }
+    console.log("head key span", headKeySpan);
     let extra = {
       ...flag,
       preVal: {},
@@ -584,26 +701,23 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
       attrInfo,
       rootSpan: Array.from({length: rowHeader.length}, () => new Array()),
       rootIdList: Array.from({length: rowHeader.length}, () => new Array()),
-      depth: oldRowDepth,
-      layersBias
+      layersBias,
+      headSpan
     }
     interTable = Array.from({length: rowSize}, () => new Array(rowDepth)
                   .fill(null).map(_ => ({rowSpan: 1, colSpan: 1})))
     gen_inter_row_table(interTable, rowHeader, extra, rowSize, 0, 0)
-    let cell_length = 0
-    if(flag.expand) {
-      for(let ct of extra.cellTable) cell_length = (cell_length>ct.length) ? cell_length : ct.length
-    }
-    console.log('@@@', interTable);
+    // console.log('@@@', interTable);
     let maxLength = 0, tmpLength: number[] = []
+    // console.log('cell', extra.cellTable);
     for(let i=0; i<rowSize; i++) {
       processTable[i] = [], tmpLength[i] = 0
       for(let j=0; j<rowDepth; j++) {
         let tmp = interTable[i][j] 
-        if(tmp.isUsed) continue
-        if(flag.entityMerge && flag.expand && tmp.isDelete) continue
-        if(flag.entityMerge && flag.expand && tmp.isLeaf===false &&
-           tmp.isKey===false) tmp.colSpan = cell_length
+        if(tmp.isUsed) {
+          processTable[i].push({isDelete: true})
+          continue
+        }
         if(tmp.value) {
           processTable[i].push({
             value: tmp.value, 
@@ -617,7 +731,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
             value: tmp.value, 
             source: tmp.source,
             rowSpan: 1, 
-            colSpan: tmp.colSpan,
+            colSpan: headKeySpan[j],
             style: tmp.style
           })
         }
@@ -625,8 +739,6 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
           interTable[i+k][j].isUsed = true
         }
       }
-      if(flag.entityMerge) for(let p of processTable[i]) tmpLength[i] += p.colSpan
-      else tmpLength[i] = rowDepth
       for(let c of extra.cellTable[i]) {
         tmpLength[i]++
         processTable[i].push({
@@ -637,7 +749,6 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
           style: c.style
         })
       }
-      // console.log('len', tmpLength[i], tmpLength[i]-extra.cellTable[i].length);
       maxLength = maxLength>tmpLength[i] ? maxLength : tmpLength[i]
     }
     // fill empty unit
@@ -651,225 +762,199 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
           style: undefined as any
       })
     }
-    // process blank line
-    let blankBias = 0
-    for(let i=0; i<rowHeader.length; i++) {
-      if(flag.blankLine[i]) {
-        let rootIdList = extra.rootIdList[i]
-        for(let j=0; j<rootIdList.length; j++) {
-          processTable.splice(rootIdList[j]+blankBias, 0, [])
-          extra.rootSpan[i][j]++
-          blankBias++
-        }
-      }
+    // process blankLine and facet structure
+    let info = {
+      layersBias,
+      cellLength: maxLength+rowDepth,
+      tbClass,
+      // oldTable: JSON.parse(JSON.stringify(processTable))
     }
-    // process facet structure
-    let rootSpan = extra.rootSpan
-    let preH = 0, processH = 0
-    for(let i=0; i<rowHeader.length; i++) {
-      let facetLen = flag.facet[1][i]
-      rootSpan[i] = rootSpan[i].reduce((newSpan, _, idx, arr) => {
-        if(idx % facetLen === 0) {
-          let sum = 0
-          for(let i=0; i<facetLen; i++) sum += arr[idx+i]
-          newSpan.push(sum)
-        }
-        return newSpan
-      }, [])
-      for(let j=0; j<rootSpan[i].length; j++) {
-        for(let k=0; k<rootSpan[i][j]; k++) {
-          if(!finalTable[preH+k]) finalTable[preH+k] = []
-          finalTable[preH+k] = finalTable[preH+k].concat(processTable[processH+k])
-        }
-        processH += rootSpan[i][j]
-      }
-      preH += rootSpan[i][0]
-    }
-    // console.log('XXX', processTable);
-    console.log('YYY', finalTable);
-    console.log('final', gen_final_table(finalTable, tbClass, flag.entityMerge));
+    gen_blank_facet_table(processTable, rowHeader, info, 0, 0)
+    console.log('new', processTable);
+    finalTable =  gen_final_table(processTable, tbClass, false)
+    console.log('final', finalTable);
   } else if(tbClass == COLUM_TABLE) {
-    let oldColDepth = colDepth
-    let flag = get_structure_type(columnHeader)
-    if(flag.entityMerge) { 
-      colSize = calc_head_size(columnHeader, true)
-      colDepth = flag.expand ? 2 : 1
-    } 
-    // colDepth += calc_overall_key_layer(columnHeader, flag.entityMerge, tbClass)
-    let layersBias = [], totalLayer = 0
-    calc_each_key_layer(columnHeader, layersBias, 0, flag.entityMerge, tbClass)
-    if(flag.entityMerge) {
-      totalLayer = layersBias[0] + layersBias[1]
-    } else {
-      for(let lb of layersBias) totalLayer += lb[0] + lb[1]
-    }
-    colDepth += totalLayer
-    console.log('layers bias', layersBias);
-    console.log('total layer', totalLayer);
-    let extra = {
-      ...flag,
-      preVal: {},
-      data: data.values,
-      cell, 
-      cellTable: Array.from({length: colSize}, () => new Array()),
-      attrInfo,
-      rootSpan: Array.from({length: columnHeader.length}, () => new Array()),
-      rootIdList: Array.from({length: columnHeader.length}, () => new Array()),
-      depth: oldColDepth,
-      layersBias
-    }
-    interTable = Array.from({length: colDepth}, () => new Array(colSize)
-                  .fill(null).map(_ => ({rowSpan: 1, colSpan: 1})))
-    gen_inter_column_table(interTable, columnHeader, extra, colSize, 0, 0)
-    let cell_length = 0
-    if(flag.expand) {
-      for(let ct of extra.cellTable) cell_length = (cell_length>ct.length) ? cell_length : ct.length
-    }
-    console.log('@@', interTable);
-    let maxLength = 0, tmpLength: number[] = []
-    for(let j=0; j<colSize; j++) {
-      processTable[j] = [], tmpLength[j] = 0
-      for(let i=0; i<colDepth; i++) {
-        let tmp = interTable[i][j]
-        if(tmp.isUsed) continue
-        if(flag.entityMerge && flag.expand && tmp.isDelete) continue
-        if(flag.entityMerge && flag.expand && tmp.isLeaf===false &&
-           tmp.isKey===false) tmp.rowSpan = cell_length
-        if(tmp.value) {
-          processTable[j].push({
-            value: tmp.value, 
-            source: tmp.source,
-            rowSpan: tmp.rowSpan, 
-            colSpan: tmp.colSpan,
-            style: tmp.style
-          })
-        } else {
-          processTable[j].push({
-            value: tmp.value, 
-            source: tmp.source,
-            rowSpan: tmp.rowSpan, 
-            colSpan: 1,
-            style: tmp.style
-          })
-        }
-        for(let k=0; k<tmp.colSpan; k++) {
-          interTable[i][j+k].isUsed = true
-        }
-      }
-      if(flag.entityMerge) for(let p of processTable[j]) tmpLength[j] += p.rowSpan
-      else tmpLength[j] = colDepth
-      for(let c of extra.cellTable[j]) {
-        tmpLength[j]++
-        processTable[j].push({
-          value: c.value,
-          source: c.source,
-          rowSpan: 1,
-          colSpan: 1,
-          style: c.style
-        })
-      }
-      // console.log('len', tmpLength[j], tmpLength[j]-extra.cellTable[j].length);
-      maxLength = maxLength>tmpLength[j] ? maxLength : tmpLength[j]
-    }
-    // fill empty unit
-    for(let i=0; i<processTable.length; i++) {
-      let resLength = maxLength - tmpLength[i]
-      for(let j=0; j<resLength; j++) processTable[i].push({
-          value: undefined as any,
-          source: undefined as any,
-          rowSpan: 1,
-          colSpan: 1,
-          style: undefined as any
-      })
-    }
-    // process blank line
-    let blankBias = 0
-    for(let i=0; i<columnHeader.length; i++) {
-      if(flag.blankLine[i]) {
-        let rootIdList = extra.rootIdList[i]
-        for(let j=0; j<rootIdList.length; j++) {
-          processTable.splice(rootIdList[j]+blankBias, 0, [])
-          extra.rootSpan[i][j]++
-          blankBias++
-        }
-      }
-    }
-    // process facet structure
-    let rootSpan = extra.rootSpan
-    let preH = 0, processH = 0
-    for(let i=0; i<columnHeader.length; i++) {
-      let facetLen = flag.facet[1][i]
-      rootSpan[i] = rootSpan[i].reduce((newSpan, _, idx, arr) => {
-        if(idx % facetLen === 0) {
-          let sum = 0
-          for(let i=0; i<facetLen; i++) sum += arr[idx+i]
-          newSpan.push(sum)
-        }
-        return newSpan
-      }, [])
-      for(let j=0; j<rootSpan[i].length; j++) {
-        for(let k=0; k<rootSpan[i][j]; k++) {
-          if(!finalTable[preH+k]) finalTable[preH+k] = []
-          finalTable[preH+k] = finalTable[preH+k].concat(processTable[processH+k])
-        }
-        processH += rootSpan[i][j]
-      }
-      preH += rootSpan[i][0]
-    }
-    // console.log('XX', processTable);
-    console.log('YY', finalTable);
-    console.log('final',gen_final_table(finalTable, tbClass, flag.entityMerge))
-  } else {
-    let oldRowDepth = rowDepth, oldColDepth = colDepth
-    let rowFlag = get_structure_type(rowHeader), colFlag = get_structure_type(columnHeader)
+  //   let oldColDepth = colDepth
+  //   let flag = get_structure_type(columnHeader)
+  //   if(flag.entityMerge) { 
+  //     colSize = calc_head_size(columnHeader, true)
+  //     // colDepth = flag.expand ? 2 : 1
+  //   } 
+  //   // colDepth += calc_overall_key_layer(columnHeader, flag.entityMerge, tbClass)
+  //   let layersBias = [], totalLayer = 0
+  //   calc_each_key_layer(columnHeader, layersBias, 0, flag.entityMerge, tbClass)
+  //   if(flag.entityMerge) {
+  //     totalLayer = layersBias[0] + layersBias[1]
+  //   } else {
+  //     for(let lb of layersBias) totalLayer += lb[0] + lb[1]
+  //   }
+  //   colDepth += totalLayer
+  //   console.log('layers bias', layersBias);
+  //   console.log('total layer', totalLayer);
+  //   let extra = {
+  //     ...flag,
+  //     preVal: {},
+  //     data: data.values,
+  //     cell, 
+  //     cellTable: Array.from({length: colSize}, () => new Array()),
+  //     attrInfo,
+  //     rootSpan: Array.from({length: columnHeader.length}, () => new Array()),
+  //     rootIdList: Array.from({length: columnHeader.length}, () => new Array()),
+  //     depth: oldColDepth,
+  //     layersBias
+  //   }
+  //   interTable = Array.from({length: colDepth}, () => new Array(colSize)
+  //                 .fill(null).map(_ => ({rowSpan: 1, colSpan: 1})))
+  //   gen_inter_column_table(interTable, columnHeader, extra, colSize, 0, 0)
+  //   let cell_length = 0
+  //   // if(flag.expand) {
+  //   //   for(let ct of extra.cellTable) cell_length = (cell_length>ct.length) ? cell_length : ct.length
+  //   // }
+  //   console.log('@@', interTable);
+  //   let maxLength = 0, tmpLength: number[] = []
+  //   for(let j=0; j<colSize; j++) {
+  //     processTable[j] = [], tmpLength[j] = 0
+  //     for(let i=0; i<colDepth; i++) {
+  //       let tmp = interTable[i][j]
+  //       if(tmp.isUsed) continue
+  //       // if(flag.entityMerge && flag.expand && tmp.isDelete) continue
+  //       // if(flag.entityMerge && flag.expand && tmp.isLeaf===false &&
+  //       //    tmp.isKey===false) tmp.rowSpan = cell_length
+  //       if(tmp.value) {
+  //         processTable[j].push({
+  //           value: tmp.value, 
+  //           source: tmp.source,
+  //           rowSpan: tmp.rowSpan, 
+  //           colSpan: tmp.colSpan,
+  //           style: tmp.style
+  //         })
+  //       } else {
+  //         processTable[j].push({
+  //           value: tmp.value, 
+  //           source: tmp.source,
+  //           rowSpan: tmp.rowSpan, 
+  //           colSpan: 1,
+  //           style: tmp.style
+  //         })
+  //       }
+  //       for(let k=0; k<tmp.colSpan; k++) {
+  //         interTable[i][j+k].isUsed = true
+  //       }
+  //     }
+  //     if(flag.entityMerge) for(let p of processTable[j]) tmpLength[j] += p.rowSpan
+  //     else tmpLength[j] = colDepth
+  //     for(let c of extra.cellTable[j]) {
+  //       tmpLength[j]++
+  //       processTable[j].push({
+  //         value: c.value,
+  //         source: c.source,
+  //         rowSpan: 1,
+  //         colSpan: 1,
+  //         style: c.style
+  //       })
+  //     }
+  //     // console.log('len', tmpLength[j], tmpLength[j]-extra.cellTable[j].length);
+  //     maxLength = maxLength>tmpLength[j] ? maxLength : tmpLength[j]
+  //   }
+  //   // fill empty unit
+  //   for(let i=0; i<processTable.length; i++) {
+  //     let resLength = maxLength - tmpLength[i]
+  //     for(let j=0; j<resLength; j++) processTable[i].push({
+  //         value: undefined as any,
+  //         source: undefined as any,
+  //         rowSpan: 1,
+  //         colSpan: 1,
+  //         style: undefined as any
+  //     })
+  //   }
+  //   // process blank line
+  //   let blankBias = 0
+  //   for(let i=0; i<columnHeader.length; i++) {
+  //     if(flag.blankLine[i]) {
+  //       let rootIdList = extra.rootIdList[i]
+  //       for(let j=0; j<rootIdList.length; j++) {
+  //         processTable.splice(rootIdList[j]+blankBias, 0, [])
+  //         extra.rootSpan[i][j]++
+  //         blankBias++
+  //       }
+  //     }
+  //   }
+  //   // process facet structure
+  //   let rootSpan = extra.rootSpan
+  //   let preH = 0, processH = 0
+  //   for(let i=0; i<columnHeader.length; i++) {
+  //     let facetLen = flag.facet[1][i]
+  //     rootSpan[i] = rootSpan[i].reduce((newSpan, _, idx, arr) => {
+  //       if(idx % facetLen === 0) {
+  //         let sum = 0
+  //         for(let i=0; i<facetLen; i++) sum += arr[idx+i]
+  //         newSpan.push(sum)
+  //       }
+  //       return newSpan
+  //     }, [])
+  //     for(let j=0; j<rootSpan[i].length; j++) {
+  //       for(let k=0; k<rootSpan[i][j]; k++) {
+  //         if(!finalTable[preH+k]) finalTable[preH+k] = []
+  //         finalTable[preH+k] = finalTable[preH+k].concat(processTable[processH+k])
+  //       }
+  //       processH += rootSpan[i][j]
+  //     }
+  //     preH += rootSpan[i][0]
+  //   }
+  //   // console.log('XX', processTable);
+  //   console.log('YY', finalTable);
+  //   console.log('final',gen_final_table(finalTable, tbClass, flag.entityMerge))
+  } 
+  // else {
+  //   let oldRowDepth = rowDepth, oldColDepth = colDepth
+  //   let rowFlag = get_structure_type(rowHeader), colFlag = get_structure_type(columnHeader)
     
-    // Row Header Process
-    if(rowFlag.entityMerge) {
-      rowSize = calc_head_size(rowHeader, true)
-      rowDepth = rowFlag.expand ? 2 : 1
-    }
-    let rowLayersBias = [], rowTotalLayer = 0
-    calc_each_key_layer(rowHeader, rowLayersBias, 0, rowFlag.entityMerge, ROW_TABLE)
-    if(rowFlag.entityMerge) {
-      rowTotalLayer = rowLayersBias[0] + rowLayersBias[1]
-    } else {
-      for(let lb of rowLayersBias) rowTotalLayer += lb[0] + lb[1]
-    }
-    rowDepth += rowTotalLayer
-    let rowExtra = {
-      ...rowFlag,
-      data: data.values,
-      cell, 
-      cellTable: Array.from({length: rowSize}, () => new Array()),
-      attrInfo,
-      rootSpan: Array.from({length: rowHeader.length}, () => new Array()),
-      rootIdList: Array.from({length: rowHeader.length}, () => new Array()),
-      depth: oldRowDepth,
-      layersBias: rowLayersBias
-    }
+  //   // Row Header Process
+  //   if(rowFlag.entityMerge) {
+  //     rowSize = calc_head_size(rowHeader, true)
+  //     // rowDepth = rowFlag.expand ? 2 : 1
+  //   }
+  //   let rowLayersBias = [], rowTotalLayer = 0
+  //   calc_each_key_layer(rowHeader, rowLayersBias, 0, rowFlag.entityMerge, ROW_TABLE)
+  //   if(rowFlag.entityMerge) {
+  //     rowTotalLayer = rowLayersBias[0] + rowLayersBias[1]
+  //   } else {
+  //     for(let lb of rowLayersBias) rowTotalLayer += lb[0] + lb[1]
+  //   }
+  //   rowDepth += rowTotalLayer
+  //   let rowExtra = {
+  //     ...rowFlag,
+  //     data: data.values,
+  //     cell, 
+  //     cellTable: Array.from({length: rowSize}, () => new Array()),
+  //     attrInfo,
+  //     rootSpan: Array.from({length: rowHeader.length}, () => new Array()),
+  //     rootIdList: Array.from({length: rowHeader.length}, () => new Array()),
+  //     depth: oldRowDepth,
+  //     layersBias: rowLayersBias
+  //   }
 
-    // Column Header Process
-    if(colFlag.entityMerge) { 
-      colSize = calc_head_size(columnHeader, true)
-      colDepth = colFlag.expand ? 2 : 1
-    } 
-    let colLayersBias = [], colTotalLayer = 0
-    calc_each_key_layer(columnHeader, colLayersBias, 0, colFlag.entityMerge, COLUM_TABLE)
-    if(colFlag.entityMerge) {
-      colTotalLayer = colLayersBias[0] + colLayersBias[1]
-    } else {
-      for(let lb of colLayersBias) colTotalLayer += lb[0] + lb[1]
-    }
-    colDepth += colTotalLayer
+  //   // Column Header Process
+  //   if(colFlag.entityMerge) { 
+  //     colSize = calc_head_size(columnHeader, true)
+  //     // colDepth = colFlag.expand ? 2 : 1
+  //   } 
+  //   let colLayersBias = [], colTotalLayer = 0
+  //   calc_each_key_layer(columnHeader, colLayersBias, 0, colFlag.entityMerge, COLUM_TABLE)
+  //   if(colFlag.entityMerge) {
+  //     colTotalLayer = colLayersBias[0] + colLayersBias[1]
+  //   } else {
+  //     for(let lb of colLayersBias) colTotalLayer += lb[0] + lb[1]
+  //   }
+  //   colDepth += colTotalLayer
     
-    interTable = Array.from({length: rowSize+colDepth}, () => new Array(rowDepth+colSize)
-                  .fill(null).map(_ => ({rowSpan: 1, colSpan: 1})))
-    gen_inter_row_table(interTable, rowHeader, rowExtra, rowSize, 0, 0, colDepth)
+  //   interTable = Array.from({length: rowSize+colDepth}, () => new Array(rowDepth+colSize)
+  //                 .fill(null).map(_ => ({rowSpan: 1, colSpan: 1})))
+  //   gen_inter_row_table(interTable, rowHeader, rowExtra, rowSize, 0, 0, colDepth)
 
-    // gen_inter_cross_table(interTable, rowHeader, columnHeader, rowSize, rowDepth, colSize, colDepth)
-    console.log('@', interTable);
-  }
-
+  //   // gen_inter_cross_table(interTable, rowHeader, columnHeader, rowSize, rowDepth, colSize, colDepth)
+  //   console.log('@', interTable);
+  // }
   console.log(rowDepth, colDepth, rowSize, colSize);
   
 }

@@ -81,7 +81,7 @@ export interface HeaderBlock {
   key?: Key;
   entityMerge?: boolean;
   gridMerge?: boolean;
-  expand?: boolean;
+  // expand?: boolean;
   facet?: number;
   blankLine?: boolean;
   style?: string;
