@@ -118,22 +118,64 @@ let spec2 = {
   rowHeader: undefined,
   columnHeader: [{
     attrName: "state",
-    blockId: "3dca2581-a3c5-1fa2-edac-abc1c43123da",
+    blockId: "1111",
+    entityMerge: false,
+    gridMerge: true,
+    // blankLine: true,
+    key: {
+      position: "top",
+      // position: "embedded",
+      pattern: "1",
+      isInherited: true
+    },
     children: [{
       attrName: "year",
-			blockId: "1beaf109-f1f2-4cb3-acce-bca9b18275aa",
+			blockId: "2222",
+      entityMerge: true,
+      facet: 1,
+      blankLine: true,
+      key: {
+        // position: "left",
+        position: "embedded",
+        pattern: "I",
+        isInherited: true
+      },
+      children: [{
+        attrName: "year",
+        blockId: "3333",
+        entityMerge: true,
+        facet: 1,
+        key: {
+          // position: "left",
+          position: "embedded",
+          pattern: "1",
+          isInherited: true
+        },
+      }]
     }, {
 			function: "sum",
-			blockId: "186f15a3-7e92-466d-9f8c-ef60bbe96768",
+			blockId: "4444",
+      entityMerge: false,
+      key: {
+        // position: "left",
+        position: "embedded",
+        pattern: "A",
+        isInherited: true
+      },
 		}],
-  }, {
-    attrName: "test",
-    blockId: "3dca2581-a3c5-1fa2-edac-abc1c51723da"
   }],
   cell: [{
 		attrName: "crime",
-		rowParentId: "...",
-		colParentId: "...",
+		rowParentId: undefined,
+		colParentId: "3333",
+	}, {
+		attrName: "crime",
+		rowParentId: undefined,
+		colParentId: "3333",
+	},{
+		attrName: "crime",
+		rowParentId: undefined,
+		colParentId: "4444",
 	}],
   attrInfo: [{
 		name: "state",
@@ -480,5 +522,5 @@ let spec6 = {
   styles: undefined
 }
 
-tableShop.utils.transform({data, spec:spec})
+tableShop.utils.transform({data, spec:spec2})
 // tableShop.utils.transform({data:data2, spec:spec6})
