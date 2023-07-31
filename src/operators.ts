@@ -523,51 +523,73 @@ const gen_blank_facet_table = (rawTable, header, info, depth, outerX,
   let innerX = 0, maxLen = info.cellLength, facetSpan = 0, blankLine = 0
   let [beforeBias, afterBias] = info.layersBias[depth]
   let keyLayer = beforeBias+afterBias
-  for(let hd of header) {
+  for(let hb of header) {
     let start = innerX + outerX + bias, subFacetSpan = 0
-    for(let i=0; i<hd.values.length; i++) {
+    let nowBeforeBias = 0, nowAfterBias = 0
+    if(hb.key) {
+      if(info.tbClass === ROW_TABLE) {
+        if(hb.key.position === Position.LEFT) nowBeforeBias = 1
+        if(hb.key.position === Position.RIGHT) nowAfterBias = 1
+      } else if(info.tbClass === COLUM_TABLE) {
+        if(hb.key.position === Position.TOP) nowBeforeBias = 1
+        if(hb.key.position === Position.BOTTOM) nowAfterBias = 1
+      }
+    }
+    for(let i=0; i<hb.values.length; i++) {
       let iterCount = 1, len = info.cellLength, tmpFacetSpan = 1, blank = 0
       let x = innerX + outerX + bias, y = depth + keyBias
-      if(hd.entityMerge) {
-        [iterCount, len, tmpFacetSpan, blank] = gen_blank_facet_table(rawTable, hd.children, info, depth, outerX+innerX+1, 
-          bias, hd.entityMerge, keyBias)
+      if(hb.entityMerge) {
+        [iterCount, len, tmpFacetSpan, blank] = gen_blank_facet_table(rawTable, hb.children, info, depth, outerX+innerX+1, 
+          bias, hb.entityMerge, keyBias)
       } else {
-        [iterCount, len, tmpFacetSpan, blank] = gen_blank_facet_table(rawTable, hd.children, info, depth+1, outerX+innerX, 
-          bias, hd.entityMerge, keyBias+keyLayer)
+        [iterCount, len, tmpFacetSpan, blank] = gen_blank_facet_table(rawTable, hb.children, info, depth+1, outerX+innerX, 
+          bias, hb.entityMerge, keyBias+keyLayer)
       }
       
       for(let j=0; j<iterCount; j++) {
         // console.log('xxxxxx',  info.oldTable[x+j][y+beforeBias].value, x+j, y+beforeBias);
-        if(rawTable[x+j][y+beforeBias] !== undefined && !hd.entityMerge && hd.gridMerge) {
+        if(rawTable[x+j][y+beforeBias] !== undefined && !hb.entityMerge && hb.gridMerge) {
           if(info.tbClass === ROW_TABLE) {
-            if(beforeBias > 0) rawTable[x+j][y].rowSpan = tmpFacetSpan + blank
+            // if(beforeBias > 0) rawTable[x+j][y].rowSpan = tmpFacetSpan + blank
+            if(nowBeforeBias > 0) rawTable[x+j][y].rowSpan = tmpFacetSpan + blank
             rawTable[x+j][y+beforeBias].rowSpan = tmpFacetSpan + blank
-            if(afterBias > 0) rawTable[x+j][y+beforeBias+afterBias].rowSpan = tmpFacetSpan + blank
+            // if(afterBias > 0) rawTable[x+j][y+beforeBias+afterBias].rowSpan = tmpFacetSpan + blank
+            if(nowAfterBias > 0) rawTable[x+j][y+beforeBias+afterBias].rowSpan = tmpFacetSpan + blank
           }
           else if(info.tbClass === COLUM_TABLE) {
-            if(beforeBias > 0) rawTable[x+j][y].colSpan = tmpFacetSpan + blank
+            // if(beforeBias > 0) rawTable[x+j][y].colSpan = tmpFacetSpan + blank
+            if(nowBeforeBias > 0) rawTable[x+j][y].colSpan = tmpFacetSpan + blank
             rawTable[x+j][y+beforeBias].colSpan = tmpFacetSpan + blank
-            if(afterBias > 0) rawTable[x+j][y+beforeBias+afterBias].colSpan = tmpFacetSpan + blank
+            // if(afterBias > 0) rawTable[x+j][y+beforeBias+afterBias].colSpan = tmpFacetSpan + blank
+            if(nowAfterBias > 0) rawTable[x+j][y+beforeBias+afterBias].colSpan = tmpFacetSpan + blank
           }          
         }
-        if(rawTable[x+j][y+beforeBias] !== undefined && j===0 && hd.blankLine) {
+        if(rawTable[x+j][y+beforeBias] !== undefined && j===0 && hb.blankLine) {
           if(beforeBias > 0) rawTable[x+j][y].hasBlank = true
           rawTable[x+j][y+beforeBias].hasBlank = true
           if(afterBias > 0) rawTable[x+j][y+beforeBias+afterBias].hasBlank = true
         }
       }
-      if(hd.facet > 1) {
+      if(hb.facet > 1) {
         let copyLen = len - y
-        let group = i % hd.facet
+        let group = i % hb.facet
         for(let j=0; j<iterCount; j++) {
           for(let k=0; k<copyLen; k++) {
-            let tarX = start + Math.floor(i/hd.facet)*iterCount + j, tarY = y + k + group*copyLen
+            let tarX = start + Math.floor(i/hb.facet)*iterCount + j, tarY = y + k + group*copyLen
             rawTable[tarX][tarY] = rawTable[x+j][y+k]
             if(rawTable[x+j][y+k] !== undefined && (tarX !== x+j || tarY !== y+k)) 
               rawTable[x+j][y+k] = {isDelete: true}
           }
         }
-        let delta = (hd.facet-1) * copyLen
+        if(info.alignHeader) {
+          for(let i=0; i<info.alignHeader.length; i++) {
+            for(let j=0; j<copyLen; j++) {
+              let tarY = y + j + group*copyLen
+              info.alignHeader[i][tarY] = info.alignHeader[i][y+j]
+            }
+          }
+        }
+        let delta = (hb.facet-1) * copyLen
         len += delta
       }
 
@@ -575,9 +597,9 @@ const gen_blank_facet_table = (rawTable, header, info, depth, outerX,
       if(maxLen < len) maxLen = len
       subFacetSpan += tmpFacetSpan
     }
-    if(hd.facet>1) subFacetSpan = Math.ceil(subFacetSpan / hd.facet)
+    if(hb.facet>1) subFacetSpan = Math.ceil(subFacetSpan / hb.facet)
     facetSpan += subFacetSpan
-    if(hd.blankLine) blankLine += Math.ceil(hd.values.length / hd.facet)
+    if(hb.blankLine) blankLine += Math.ceil(hb.values.length / hb.facet)
   }
   let delta1 = isPreMerge ? 1 : 0, delta2 = isPreMerge?0:1
   return [innerX+delta1, maxLen+delta2, facetSpan+delta1, blankLine]
@@ -604,12 +626,14 @@ const gen_final_table = (table, tableClass) => {
   // fill each length
   for(let t of table) {
     let resLen = maxLength - t.length, tmp = t.length 
+    // for(let i=0; i<t.length; i++) {
+
+    // }
     for(let i=0; i<resLen; i++) {
       if(tableClass === ROW_TABLE) t.push({rowSpan: 1, colSpan: spanList[i+tmp]})
       else if(tableClass === COLUM_TABLE) t.push({rowSpan: spanList[i+tmp], colSpan: 1})
     }
   }
-  console.log('final', table.length);
   let locMap = new Array(maxLength).fill(0)
   for(let i=0; i<table.length; i++) {
     let t = table[i], isBlank = false
@@ -654,7 +678,6 @@ const gen_final_table = (table, tableClass) => {
         // locMap[j] += table[i][j].rowSpan
       }
     }
-    console.log('loc map', locMap);
   }
   if(tableClass === COLUM_TABLE) {
     let newFinalTable = new Array()
@@ -967,31 +990,100 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
     // console.log('valIdx', rowExtra.valIdx)
     // console.log('valIdx', colExtra.valIdx);
     gen_inter_cross_table(interTable, rowExtra, colExtra, cell)
-    console.log('@', interTable)
+    // console.log('@', interTable)
 
     let rowPart = new Array(), colPart = new Array()
-    // console.log('row', get_header_is_facet(rowHeader), 'col', get_header_is_facet(columnHeader));
     if(get_header_is_facet(columnHeader)) {
       // columnHeader with cell
       //TODO
     } else {
       // rowHeader with cell
-      let tmpTable = interTable.slice(0, colDepth)
-      for(let t of tmpTable) {
-        colPart.push([...t.slice(rowDepth, crossDepth)])
+      let colProcess = new Array(), colProcTrans = new Array()
+      for(let i=0; i<crossSize; i++) {
+        colProcess[i] = new Array()
+        for(let j=rowDepth; j<crossDepth; j++) {
+          colProcess[i].push({...interTable[i][j]})
+        }
       }
-      rowPart = interTable.slice(colDepth, crossSize)
-      // process raw part
       for(let i=0; i<rowSize; i++) {
-        processTable[i] = []
+        rowPart[i] = new Array()
         for(let j=0; j<rowDepth; j++) {
-          let tmp = rowPart[i][j] 
+          rowPart[i].push({...interTable[i+colDepth][j]})
+        }
+      }
+
+      // process column part
+      for(let j=0; j<colSize; j++) {
+        colProcTrans[j] = new Array()
+        for(let i=0; i<colDepth; i++) {
+          let tmp = colProcess[i][j]
           if(tmp.isUsed) {
-            processTable[i].push({isDelete: true})
+            colProcess[i][j] ={isDelete: true}
+            colProcTrans[j].push(colProcess[i][j])
             continue
           }
           if(tmp.value) {
-            processTable[i].push({
+            colProcess[i][j] = {
+              value: tmp.value, 
+              source: tmp.source,
+              rowSpan: tmp.rowSpan, 
+              colSpan: tmp.colSpan,
+              style: tmp.style
+            }
+          } else {
+            colProcess[i][j] = {
+              value: tmp.value, 
+              source: tmp.source,
+              rowSpan: headKeyColSpan[i], 
+              colSpan: 1,
+              style: tmp.style
+            }
+          }
+          colProcTrans[j].push(colProcess[i][j])
+          for(let k=0; k<tmp.colSpan; k++) {
+            colProcess[i][j+k].isUsed = true
+          }
+        }
+        for(let i=colDepth; i<crossSize; i++) colProcTrans[j].push(colProcess[i][j])
+      }
+      let colInfo = {
+        layersBias: layersColBias,
+        cellLength: crossSize,
+        tbClass: COLUM_TABLE,
+      }
+      gen_blank_facet_table(colProcTrans, columnHeader, colInfo, 0, 0)
+      // console.log('transpose', colProcTrans);
+      colProcess =  gen_final_table(colProcTrans, COLUM_TABLE)
+      // console.log('col process', colProcess);
+      for(let i=0; i<colDepth; i++) {
+        colPart[i] = colProcess[i]
+        for(let j=0; j<rowDepth; j++) {
+          colPart[i].unshift({
+            rowSpan: headKeyColSpan[i], 
+            colSpan: headKeyRowSpan[j]
+          })
+        }
+      }
+      // console.log('col part', colPart);
+
+      // process raw part
+      let maxLength = 0
+      for(let i=0; i<rowSize; i++) {
+        rowPart[i] = rowPart[i].concat(colProcess[i+colDepth])
+        if(maxLength < rowPart[i].length) maxLength = rowPart[i].length
+      }
+      // console.log('row part', rowPart, maxLength);
+      let rowProcess = new Array()
+      for(let i=0; i<rowSize; i++) {
+        rowProcess[i] = []
+        for(let j=0; j<rowDepth; j++) {
+          let tmp = rowPart[i][j] 
+          if(tmp.isUsed) {
+            rowProcess[i].push({isDelete: true})
+            continue
+          }
+          if(tmp.value) {
+            rowProcess[i].push({
               value: tmp.value, 
               source: tmp.source,
               rowSpan: tmp.rowSpan, 
@@ -999,7 +1091,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
               style: tmp.style
             })
           } else {
-            processTable[i].push({
+            rowProcess[i].push({
               value: tmp.value, 
               source: tmp.source,
               rowSpan: 1, 
@@ -1011,20 +1103,35 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
             rowPart[i+k][j].isUsed = true
           }
         }
-        for(let j=rowDepth; j<crossDepth; j++) {
-          processTable[i].push(rowPart[i][j])
+        for(let j=rowDepth; j<rowPart[i].length; j++) {
+          rowProcess[i].push(rowPart[i][j])
         }
       }
-    
-      // let rowInfo = {
-      //   layersBias: layersRowBias,
-      //   cellLength: crossDepth,
-      //   tbClass: ROW_TABLE,
-      // }
-      // gen_blank_facet_table(processTable, rowHeader, rowInfo, 0, 0)
-      // console.log('new', processTable);
-      // finalTable =  gen_final_table(processTable, ROW_TABLE)
-      // console.log('final', finalTable);
+      let rowInfo = {
+        layersBias: layersRowBias,
+        cellLength: maxLength,
+        tbClass: ROW_TABLE,
+        alignHeader: colPart,
+      }
+      gen_blank_facet_table(rowProcess, rowHeader, rowInfo, 0, 0)
+      // console.log('new', rowProcess);
+      rowPart =  gen_final_table(rowProcess, ROW_TABLE)
+      // console.log('final', rowPart);
+      for(let i=0; i<colPart.length; i++) {
+        finalTable[i] = colPart[i].slice(rowDepth)
+      }
+      for(let i=0; i<rowPart.length; i++) {
+        finalTable[i+colPart.length] = rowPart[i]
+      }
+      let rs = 0, cs = 0
+      for(let i=0; i<colDepth; i++) rs += headKeyColSpan[i]
+      for(let i=0; i<rowDepth; i++) cs += headKeyRowSpan[i]
+      finalTable[0].unshift({
+        value: undefined as any, source: undefined as any,
+        rowSpan: rs, colSpan: cs,
+        style: undefined as any
+      })
+      console.log('final !', finalTable);
     }
   }
   console.log(rowDepth, colDepth, rowSize, colSize);

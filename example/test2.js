@@ -35,6 +35,7 @@ let spec = {
     blockId: "11111",
     values: ["Asia"],
     entityMerge: false,
+    blankLine: true,
     key: {
       position: "left",
       // position: "embedded",
@@ -57,6 +58,7 @@ let spec = {
     blockId: "11111",
     values: ["Europe"],
     entityMerge: false,
+    blankLine: true,
     children: [{
       attrName: "country",
       blockId: "22222",
@@ -68,6 +70,7 @@ let spec = {
     attrName: "year",
     blockId: "44444",
     entityMerge: false,
+    // blankLine: true,
     key: {
       position: "top",
       // position: "embedded",
