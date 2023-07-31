@@ -995,7 +995,153 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
     let rowPart = new Array(), colPart = new Array()
     if(get_header_is_facet(columnHeader)) {
       // columnHeader with cell
-      //TODO
+      let rowProcess = new Array(), rowProcTrans = new Array()
+      for(let i=0; i<rowSize; i++) {
+        rowProcess[i] = new Array()
+        for(let j=0; j<crossDepth; j++) {
+          rowProcess[i].push({...interTable[i+colDepth][j]})
+        }
+      }
+      for(let i=0; i<colDepth; i++) {
+        colPart[i] = new Array()
+        for(let j=0; j<colSize; j++) {
+          colPart[i].push({...interTable[i][j+rowDepth]})
+        }
+      }
+
+      // process row part
+      for(let i=0; i<rowSize; i++) {
+        rowProcTrans[i] = new Array()
+        for(let j=0; j<rowDepth; j++) {
+          let tmp = rowProcess[i][j]
+          if(tmp.isUsed) {
+            rowProcess[i][j] ={isDelete: true}
+            rowProcTrans[i].push(rowProcess[i][j])
+            continue
+          }
+          if(tmp.value) {
+            rowProcess[i][j] = {
+              value: tmp.value, 
+              source: tmp.source,
+              rowSpan: tmp.rowSpan, 
+              colSpan: tmp.colSpan,
+              style: tmp.style
+            }
+          } else {
+            rowProcess[i][j] = {
+              value: tmp.value, 
+              source: tmp.source,
+              rowSpan: 1, 
+              colSpan: headKeyRowSpan[j],
+              style: tmp.style
+            }
+          }
+          rowProcTrans[i].push({...rowProcess[i][j]})
+          for(let k=0; k<tmp.rowSpan; k++) {
+            rowProcess[i+k][j].isUsed = true
+          }
+        }
+        for(let j=rowDepth; j<crossDepth; j++) rowProcTrans[i].push(rowProcess[i][j])
+      }
+      let rowInfo = {
+        layersBias: layersRowBias,
+        cellLength: crossDepth,
+        tbClass: ROW_TABLE,
+      }
+      gen_blank_facet_table(rowProcTrans, rowHeader, rowInfo, 0, 0)
+      // console.log('transfer', rowProcTrans);
+      rowProcess =  gen_final_table(rowProcTrans, ROW_TABLE)
+      // console.log('row process', rowProcess);
+      for(let j=0;  j<rowDepth; j++) {
+        rowPart[j] = new Array()
+        for(let i=0; i<rowProcess.length; i++) {
+          rowPart[j].push(rowProcess[i][j])
+          for(let k=1; k<rowProcess[i][j].rowSpan; k++) {
+            // rowPart[j].push({isDelete: true})
+            rowProcess[i+k].splice(j, 0, {isDelete: true})
+          }
+        }
+        for(let i=0; i<colDepth; i++) {
+          rowPart[j].unshift({
+            rowSpan: headKeyColSpan[i], 
+            colSpan: headKeyRowSpan[j]
+          })
+        }
+      }
+      // console.log('row part', rowPart);
+
+      // process column part
+      let maxLength = 0
+      for(let i=0; i<rowProcess.length; i++) {
+        colPart[i+colDepth] = rowProcess[i].slice(rowDepth)
+      }
+      maxLength = colPart.length
+      // console.log('col part', colPart, maxLength);
+      let colProcess = new Array()
+      for(let j=0; j<colSize; j++) {
+        colProcess[j] = new Array()
+        for(let i=0; i<colDepth; i++) {
+          let tmp = colPart[i][j] 
+          if(tmp.isUsed) {
+            colProcess[j].push({isDelete: true})
+            continue
+          }
+          if(tmp.value) {
+            colProcess[j].push({
+              value: tmp.value, 
+              source: tmp.source,
+              rowSpan: tmp.rowSpan, 
+              colSpan: tmp.colSpan,
+              style: tmp.style
+            })
+          } else {
+            colProcess[j].push({
+              value: tmp.value, 
+              source: tmp.source,
+              rowSpan: headKeyColSpan[i], 
+              colSpan: 1,
+              style: tmp.style
+            })
+          }
+          for(let k=0; k<tmp.colSpan; k++) {
+            colPart[i][j+k].isUsed = true
+          }
+        }
+        for(let i=colDepth; i<colPart.length; i++) {
+          colProcess[j].push(colPart[i][j])
+        }
+      }
+      let colInfo = {
+        layersBias: layersColBias,
+        cellLength: maxLength,
+        tbClass: COLUM_TABLE,
+        alignHeader: rowPart,
+      }
+      gen_blank_facet_table(colProcess, columnHeader, colInfo, 0, 0)
+      // console.log('new', colProcess);
+      colPart =  gen_final_table(colProcess, COLUM_TABLE)
+      // console.log('final', colPart);
+      for(let j=0; j<rowPart.length; j++) {
+        for(let i=colDepth; i<rowPart[j].length; i++) {
+          if(!finalTable[i]) finalTable[i] = new Array()
+          if(!rowPart[j][i].isDelete) finalTable[i].push(rowPart[j][i])
+        }
+      }
+      for(let i=0; i<colPart.length; i++) {
+        if(!finalTable[i]) finalTable[i] = new Array()
+        for(let j=0; j<colPart[i].length; j++) {
+          finalTable[i].push(colPart[i][j])
+        }
+      }
+      let rs = 0, cs = 0
+      for(let i=0; i<colDepth; i++) rs += headKeyColSpan[i]
+      for(let i=0; i<rowDepth; i++) cs += headKeyRowSpan[i]
+      finalTable[0].unshift({
+        value: undefined as any, source: undefined as any,
+        rowSpan: rs, colSpan: cs,
+        style: undefined as any
+      })
+      console.log('final', finalTable);
     } else {
       // rowHeader with cell
       let colProcess = new Array(), colProcTrans = new Array()
@@ -1039,7 +1185,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
               style: tmp.style
             }
           }
-          colProcTrans[j].push(colProcess[i][j])
+          colProcTrans[j].push({...colProcess[i][j]})
           for(let k=0; k<tmp.colSpan; k++) {
             colProcess[i][j+k].isUsed = true
           }
@@ -1056,7 +1202,14 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
       colProcess =  gen_final_table(colProcTrans, COLUM_TABLE)
       // console.log('col process', colProcess);
       for(let i=0; i<colDepth; i++) {
-        colPart[i] = colProcess[i]
+        // colPart[i] = colProcess[i]
+        colPart[i] = new Array()
+        for(let j=0; j<colProcess[i].length; j++) {
+          colPart[i].push(colProcess[i][j])
+          for(let k=1; k<colProcess[i][j].colSpan; k++) {
+            colPart[i].push({isDelete: true})
+          }
+        }
         for(let j=0; j<rowDepth; j++) {
           colPart[i].unshift({
             rowSpan: headKeyColSpan[i], 
@@ -1075,7 +1228,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
       // console.log('row part', rowPart, maxLength);
       let rowProcess = new Array()
       for(let i=0; i<rowSize; i++) {
-        rowProcess[i] = []
+        rowProcess[i] = new Array()
         for(let j=0; j<rowDepth; j++) {
           let tmp = rowPart[i][j] 
           if(tmp.isUsed) {
@@ -1118,7 +1271,11 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
       rowPart =  gen_final_table(rowProcess, ROW_TABLE)
       // console.log('final', rowPart);
       for(let i=0; i<colPart.length; i++) {
-        finalTable[i] = colPart[i].slice(rowDepth)
+        let tmp = colPart[i].slice(rowDepth)
+        finalTable[i] = new Array()
+        for(let j=0; j<tmp.length; j++) {
+          if(!tmp[j].isDelete) finalTable[i].push(tmp[j])
+        }
       }
       for(let i=0; i<rowPart.length; i++) {
         finalTable[i+colPart.length] = rowPart[i]
@@ -1131,7 +1288,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
         rowSpan: rs, colSpan: cs,
         style: undefined as any
       })
-      console.log('final !', finalTable);
+      console.log('final', finalTable);
     }
   }
   console.log(rowDepth, colDepth, rowSize, colSize);

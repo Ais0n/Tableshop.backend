@@ -35,13 +35,13 @@ let spec = {
     blockId: "11111",
     values: ["Asia"],
     entityMerge: false,
-    blankLine: true,
-    key: {
-      position: "left",
-      // position: "embedded",
-      pattern: "1",
-      isInherited: true
-    },
+    // blankLine: true,
+    // key: {
+    //   position: "left",
+    //   // position: "embedded",
+    //   pattern: "1",
+    //   isInherited: true
+    // },
     children: [{
       attrName: "country",
       blockId: "22222",
@@ -58,7 +58,7 @@ let spec = {
     blockId: "11111",
     values: ["Europe"],
     entityMerge: false,
-    blankLine: true,
+    // blankLine: true,
     children: [{
       attrName: "country",
       blockId: "22222",
@@ -71,12 +71,12 @@ let spec = {
     blockId: "44444",
     entityMerge: false,
     // blankLine: true,
-    key: {
-      position: "top",
-      // position: "embedded",
-      pattern: "I",
-      isInherited: true
-    },
+    // key: {
+    //   position: "top",
+    //   // position: "embedded",
+    //   pattern: "I",
+    //   isInherited: true
+    // },
     children: [{
       attrName: "season",
       blockId: "55555",
