@@ -149,7 +149,7 @@ const calc_each_key_layer = (channel?: HeaderChannel, layersBias: any = [], dept
   }
 }
 
-// TODO: fix structure judge
+// Do not use again
 const get_structure_type = (channel?: HeaderChannel) => { 
   if (!channel || channel.length == 0) throw new Error("Header can not be undefined")
   let hb0: HeaderBlock = channel[0], facetList: number[][] = Array.from({length:2}, () => new Array())
@@ -167,8 +167,15 @@ const get_structure_type = (channel?: HeaderChannel) => {
   }
 }
 
-const get_block_structure = (block: HeaderBlock) => {
-
+// find whether header has facet structure
+const get_header_is_facet = (channel?: HeaderChannel) => {
+  if (!channel || channel.length == 0) return false
+  for(let hb of channel) {
+    if(hb.facet! > 1) return true
+    let res = get_header_is_facet(hb.children)
+    if(res) return true
+  }
+  return false
 }
 
 const get_cell_val = (preVal, data, key) => {
@@ -316,9 +323,9 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
         }
       }
       // process cell unit
-      if(isLeaf) {
+      if(!extra.notSearchCell && isLeaf) {
         for(let c of extra.cell) {
-          if(c.rowParentId == rh.blockId) {
+          if(c.rowParentId === rh.blockId) {
             // process function cell
             if(rh.function) {
               if(!agg_type_check(extra.attrInfo, c.attrName)) throw new Error("Function can only be used to numerical>")
@@ -338,6 +345,15 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
             }
           }
         }
+      }
+      if(extra.notSearchCell && isLeaf) {
+        if(rh.function) delete extra.preVal[source]
+        extra.valIdx.push({
+            idx: innerX+outerX+bias,
+            preVal: Object.assign({}, extra.preVal),
+            blockId: rh.blockId,
+            isAgg: rh.function ? true : false
+          })
       }
       innerX += iterCount
       delete extra.preVal[source]
@@ -430,9 +446,9 @@ const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: nu
         }
       }
       // process cell unit
-      if(isLeaf) {
+      if(!extra.notSearchCell && isLeaf) {
         for(let c of extra.cell) {
-          if(c.colParentId == ch.blockId) {
+          if(c.colParentId === ch.blockId) {
             // process function cell
             if(ch.function) {
               if(!agg_type_check(extra.attrInfo, c.attrName)) throw new Error("Function can only be used to numerical>")
@@ -453,6 +469,15 @@ const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: nu
           }
         }
       }
+      if(extra.notSearchCell && isLeaf) {
+        if(ch.function) delete extra.preVal[source]
+        extra.valIdx.push({
+            idx: innerY+outerY+bias,
+            preVal: Object.assign({}, extra.preVal),
+            blockId: ch.blockId,
+            isAgg: ch.function ? true : false
+          })
+      }
       innerY += iterCount
       delete extra.preVal[source]
     }
@@ -461,12 +486,37 @@ const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: nu
 }
 
 // generate intermediate cross table
-const gen_inter_cross_table = (interCrossTable, rowHeader, columnHeader, rowWidth: number, 
-  rowDepth: number, colWidth: number, colDepth: number) => {
-  gen_inter_row_table(interCrossTable, rowHeader, rowWidth, 0, 0, colDepth)
-  gen_inter_column_table(interCrossTable, columnHeader, colWidth, 0, 0, rowDepth)
+const gen_inter_cross_table = (interCrossTable, rowExtra, colExtra, cell) => {
+  let rowValIdx = rowExtra.valIdx, colValIdx = colExtra.valIdx
+  for(let i=0; i<rowValIdx.length; i++) {
+    for(let j=0; j<colValIdx.length; j++) {
+      for(let c of cell) {
+        if(c.rowParentId === rowValIdx[i].blockId && c.colParentId === colValIdx[j].blockId) {
+          let x = rowValIdx[i].idx, y = colValIdx[j].idx
+          if(rowValIdx[i].isAgg || colValIdx[i].isAgg) {
+            if(!agg_type_check(rowExtra.attrInfo, c.attrName)) throw new Error("Function can only be used to numerical>")
+            interCrossTable[x][y] = {
+              value: aggregate_use({...rowValIdx[i].preVal, ...colValIdx[j].preVal}, rowExtra.data, 
+                c.attrName, FUNC_SUM),
+              rowSpan: 1, colSpan: 1,
+              source: c.attrName,
+              style: c.style
+            }
+          } else {
+            interCrossTable[x][y] = {
+              value: get_cell_val({...rowValIdx[i].preVal, ...colValIdx[j].preVal}, rowExtra.data, c.attrName),
+              rowSpan: 1, colSpan: 1,
+              source: c.attrName,
+              style: c.style
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
+// generate facet and blankLine structure table
 const gen_blank_facet_table = (rawTable, header, info, depth, outerX, 
   bias = 0, isPreMerge = false, keyBias = 0) => {
   if(header === undefined) return [1, info.cellLength, 1, 0]
@@ -509,14 +559,12 @@ const gen_blank_facet_table = (rawTable, header, info, depth, outerX,
       if(hd.facet > 1) {
         let copyLen = len - y
         let group = i % hd.facet
-        // console.log('Bi', group, innerX, hd.facet);
         for(let j=0; j<iterCount; j++) {
           for(let k=0; k<copyLen; k++) {
             let tarX = start + Math.floor(i/hd.facet)*iterCount + j, tarY = y + k + group*copyLen
             rawTable[tarX][tarY] = rawTable[x+j][y+k]
             if(rawTable[x+j][y+k] !== undefined && (tarX !== x+j || tarY !== y+k)) 
               rawTable[x+j][y+k] = {isDelete: true}
-            // console.log('Ai', start+Math.floor(i/hd.facet)*iterCount+j, y+k+group*copyLen, x+j, y+k);
           }
         }
         let delta = (hd.facet-1) * copyLen
@@ -561,6 +609,7 @@ const gen_final_table = (table, tableClass) => {
       else if(tableClass === COLUM_TABLE) t.push({rowSpan: spanList[i+tmp], colSpan: 1})
     }
   }
+  console.log('final', table.length);
   let locMap = new Array(maxLength).fill(0)
   for(let i=0; i<table.length; i++) {
     let t = table[i], isBlank = false
@@ -605,6 +654,7 @@ const gen_final_table = (table, tableClass) => {
         // locMap[j] += table[i][j].rowSpan
       }
     }
+    console.log('loc map', locMap);
   }
   if(tableClass === COLUM_TABLE) {
     let newFinalTable = new Array()
@@ -837,54 +887,145 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
     finalTable =  gen_final_table(processTable, tbClass)
     console.log('final', finalTable);
   } else {
-  //   let oldRowDepth = rowDepth, oldColDepth = colDepth
-  //   let rowFlag = get_structure_type(rowHeader), colFlag = get_structure_type(columnHeader)
-    
-  //   // Row Header Process
-  //   if(rowFlag.entityMerge) {
-  //     rowSize = calc_head_size(rowHeader, true)
-  //     // rowDepth = rowFlag.expand ? 2 : 1
-  //   }
-  //   let rowLayersBias = [], rowTotalLayer = 0
-  //   calc_each_key_layer(rowHeader, rowLayersBias, 0, rowFlag.entityMerge, ROW_TABLE)
-  //   if(rowFlag.entityMerge) {
-  //     rowTotalLayer = rowLayersBias[0] + rowLayersBias[1]
-  //   } else {
-  //     for(let lb of rowLayersBias) rowTotalLayer += lb[0] + lb[1]
-  //   }
-  //   rowDepth += rowTotalLayer
-  //   let rowExtra = {
-  //     ...rowFlag,
-  //     data: data.values,
-  //     cell, 
-  //     cellTable: Array.from({length: rowSize}, () => new Array()),
-  //     attrInfo,
-  //     rootSpan: Array.from({length: rowHeader.length}, () => new Array()),
-  //     rootIdList: Array.from({length: rowHeader.length}, () => new Array()),
-  //     depth: oldRowDepth,
-  //     layersBias: rowLayersBias
-  //   }
+    // Row Header Process
+    let headRowTmpSpan = Array.from({length: rowDepth}, () => ({}))
+    let headRowSpan = new Array(rowDepth).fill(1)
+    calc_head_span(rowHeader, headRowTmpSpan)
+    console.log('head row tmp span', headRowTmpSpan);
+    for(let i=0; i<headRowTmpSpan.length; i++) {
+      let hts = headRowTmpSpan[i]
+      for(let k in hts) if(hts[k] > headRowSpan[i]) headRowSpan[i] = hts[k]
+    }
+    console.log('head row span', headRowSpan);
+    let layersRowBias = [], totalRowLayer = 0
+    calc_each_key_layer(rowHeader, layersRowBias, 0, ROW_TABLE)
+    for(let lb of layersRowBias) totalRowLayer += lb[0] + lb[1]
+    rowDepth += totalRowLayer
+    console.log('layers row bias', layersRowBias);
+    console.log('total row layer', totalRowLayer);
+    let headKeyRowSpan = new Array()
+    for(let i=0; i<headRowSpan.length; i++) {
+      if(layersRowBias[i][0] > 0) headKeyRowSpan.push(1)
+      headKeyRowSpan.push(headRowSpan[i])
+      if(layersRowBias[i][1] > 0) headKeyRowSpan.push(1)
+    }
+    console.log("head key row span", headKeyRowSpan);
+    let rowExtra = {
+      preVal: {},
+      data: data.values,
+      cell, 
+      cellTable: Array.from({length: rowSize}, () => new Array()),
+      attrInfo,
+      layersBias: layersRowBias,
+      headSpan: headRowSpan,
+      notSearchCell: true,
+      valIdx: new Array(),
+    }
 
-  //   // Column Header Process
-  //   if(colFlag.entityMerge) { 
-  //     colSize = calc_head_size(columnHeader, true)
-  //     // colDepth = colFlag.expand ? 2 : 1
-  //   } 
-  //   let colLayersBias = [], colTotalLayer = 0
-  //   calc_each_key_layer(columnHeader, colLayersBias, 0, colFlag.entityMerge, COLUM_TABLE)
-  //   if(colFlag.entityMerge) {
-  //     colTotalLayer = colLayersBias[0] + colLayersBias[1]
-  //   } else {
-  //     for(let lb of colLayersBias) colTotalLayer += lb[0] + lb[1]
-  //   }
-  //   colDepth += colTotalLayer
-    
-  //   interTable = Array.from({length: rowSize+colDepth}, () => new Array(rowDepth+colSize)
-  //                 .fill(null).map(_ => ({rowSpan: 1, colSpan: 1})))
-  //   gen_inter_row_table(interTable, rowHeader, rowExtra, rowSize, 0, 0, colDepth)
+    // Column Header Process
+    let headColTmpSpan = Array.from({length: colDepth}, () => ({}))
+    let headColSpan = new Array(colDepth).fill(1)
+    calc_head_span(columnHeader, headColTmpSpan)
+    console.log('head col tmp span', headColTmpSpan);
+    for(let i=0; i<headColTmpSpan.length; i++) {
+      let hts = headColTmpSpan[i]
+      for(let k in hts) if(hts[k] > headColSpan[i]) headColSpan[i] = hts[k]
+    }
+    console.log('head col span', headColSpan);
+    let layersColBias = [], totalColLayer = 0
+    calc_each_key_layer(columnHeader, layersColBias, 0, COLUM_TABLE)
+    for(let lb of layersColBias) totalColLayer += lb[0] + lb[1]
+    colDepth += totalColLayer
+    console.log('layers col bias', layersColBias);
+    console.log('total col layer', totalColLayer);
+    let headKeyColSpan = new Array()
+    for(let i=0; i<headColSpan.length; i++) {
+      if(layersColBias[i][0] > 0) headKeyColSpan.push(1)
+      headKeyColSpan.push(headColSpan[i])
+      if(layersColBias[i][1] > 0) headKeyColSpan.push(1)
+    }
+    console.log("head key col span", headKeyColSpan);
+    let colExtra = {
+      preVal: {},
+      data: data.values,
+      cell, 
+      cellTable: Array.from({length: rowSize}, () => new Array()),
+      attrInfo,
+      layersBias: layersColBias,
+      headSpan: headColSpan,
+      notSearchCell: true,
+      valIdx: new Array(),
+    }
 
-  //   // gen_inter_cross_table(interTable, rowHeader, columnHeader, rowSize, rowDepth, colSize, colDepth)
-  //   console.log('@', interTable);
+    // process interTable
+    let crossSize = rowSize + colDepth, crossDepth = rowDepth+colSize
+    interTable = Array.from({length: crossSize}, () => new Array(crossDepth)
+                  .fill(null).map(_ => ({rowSpan: 1, colSpan: 1})))
+    gen_inter_row_table(interTable, rowHeader, rowExtra, rowSize, 0, 0, colDepth)
+    gen_inter_column_table(interTable, columnHeader, colExtra, colSize, 0, 0, rowDepth)
+
+    // console.log('valIdx', rowExtra.valIdx)
+    // console.log('valIdx', colExtra.valIdx);
+    gen_inter_cross_table(interTable, rowExtra, colExtra, cell)
+    console.log('@', interTable)
+
+    let rowPart = new Array(), colPart = new Array()
+    // console.log('row', get_header_is_facet(rowHeader), 'col', get_header_is_facet(columnHeader));
+    if(get_header_is_facet(columnHeader)) {
+      // columnHeader with cell
+      //TODO
+    } else {
+      // rowHeader with cell
+      let tmpTable = interTable.slice(0, colDepth)
+      for(let t of tmpTable) {
+        colPart.push([...t.slice(rowDepth, crossDepth)])
+      }
+      rowPart = interTable.slice(colDepth, crossSize)
+      // process raw part
+      for(let i=0; i<rowSize; i++) {
+        processTable[i] = []
+        for(let j=0; j<rowDepth; j++) {
+          let tmp = rowPart[i][j] 
+          if(tmp.isUsed) {
+            processTable[i].push({isDelete: true})
+            continue
+          }
+          if(tmp.value) {
+            processTable[i].push({
+              value: tmp.value, 
+              source: tmp.source,
+              rowSpan: tmp.rowSpan, 
+              colSpan: tmp.colSpan,
+              style: tmp.style
+            })
+          } else {
+            processTable[i].push({
+              value: tmp.value, 
+              source: tmp.source,
+              rowSpan: 1, 
+              colSpan: headKeyRowSpan[j],
+              style: tmp.style
+            })
+          }
+          for(let k=0; k<tmp.rowSpan; k++) {
+            rowPart[i+k][j].isUsed = true
+          }
+        }
+        for(let j=rowDepth; j<crossDepth; j++) {
+          processTable[i].push(rowPart[i][j])
+        }
+      }
+    
+      // let rowInfo = {
+      //   layersBias: layersRowBias,
+      //   cellLength: crossDepth,
+      //   tbClass: ROW_TABLE,
+      // }
+      // gen_blank_facet_table(processTable, rowHeader, rowInfo, 0, 0)
+      // console.log('new', processTable);
+      // finalTable =  gen_final_table(processTable, ROW_TABLE)
+      // console.log('final', finalTable);
+    }
   }
   console.log(rowDepth, colDepth, rowSize, colSize);
   
@@ -896,7 +1037,7 @@ const transform = (task: Spec) => {
   let { rowHeader, columnHeader, cell, styles, attrInfo } = spec
   
   // check table class
-  let tableClass: string = ""
+  let tableClass = ""
   if(rowHeader !== undefined) {
     if(columnHeader !== undefined) tableClass = CROSS_TABLE
     else tableClass = ROW_TABLE

@@ -33,10 +33,18 @@ let spec = {
   rowHeader: [{
     attrName: "continent",
     blockId: "11111",
-    entityMerge: true,
+    values: ["Asia"],
+    entityMerge: false,
+    key: {
+      position: "left",
+      // position: "embedded",
+      pattern: "1",
+      isInherited: true
+    },
     children: [{
       attrName: "country",
       blockId: "22222",
+      values: ["CHN", "JPN"],
       entityMerge: false,
     }]
     // }, {
@@ -44,11 +52,28 @@ let spec = {
     //   blockId: "33333",
     //   entityMerge: false,
     // }],
+  },{
+    attrName: "continent",
+    blockId: "11111",
+    values: ["Europe"],
+    entityMerge: false,
+    children: [{
+      attrName: "country",
+      blockId: "22222",
+      values: ["GBR", "FRA"],
+      entityMerge: false,
+    }]
   }],
   columnHeader: [{
     attrName: "year",
     blockId: "44444",
-    entityMerge: true,
+    entityMerge: false,
+    key: {
+      position: "top",
+      // position: "embedded",
+      pattern: "I",
+      isInherited: true
+    },
     children: [{
       attrName: "season",
       blockId: "55555",
@@ -56,7 +81,7 @@ let spec = {
     }],
   }],
   cell: [{
-    attrName: "crime",
+    attrName: "sales",
     rowParentId: "22222",
     colParentId: "55555",
     blockId: "66666",
@@ -84,7 +109,7 @@ let spec = {
     dataType: "categorical",
     values: ["spr", "aut"],
   }, {
-    name: "crime",
+    name: "sales",
     dataType: "numerical",
     values: [105, 110, 120, 125, 131, 150, 60, 80, 82, 92, 95, 110, 80, 92, 95, 104, 112, 136, 59, 63, 72, 79, 86, 90],
   },],
