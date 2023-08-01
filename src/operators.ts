@@ -264,6 +264,7 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
       let keyData = {
         value: key, 
         source: '@KEY',
+        sourceBlockId: '@KEY',
         rowSpan: 1, colSpan: 1,
         isUsed: false,
         isLeaf,
@@ -288,6 +289,7 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
         interRowTable[innerX+outerX+bias][headerDepth] = {
           value: headValue,
           source,
+          sourceBlockId,
           rowSpan: 1, colSpan: span,
           isUsed: false, 
           isLeaf,
@@ -300,6 +302,7 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
         interRowTable[innerX+outerX+bias][headerDepth] = {
           value: headValue,
           source,
+          sourceBlockId,
           rowSpan: 1, colSpan: span,
           isUsed: false,
           isLeaf,
@@ -314,6 +317,7 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
           interRowTable[innerX+outerX+j+bias][headerDepth] = {
             value: headValue,
             source,
+            sourceBlockId,
             rowSpan: iterCount, colSpan: span,
             isUsed: false,
             isLeaf,
@@ -333,6 +337,7 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
               extra.cellTable[innerX+outerX+bias].push({
                 value: aggregate_use(extra.preVal, extra.data, c.attrName, FUNC_SUM),
                 source: c.attrName,
+                sourceBlockId: c.blockId,
                 style: c.style
               }) 
             // Process attr cell
@@ -340,6 +345,7 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
               extra.cellTable[innerX+outerX+bias].push({
                 value: get_cell_val(extra.preVal, extra.data, c.attrName),
                 source: c.attrName,
+                sourceBlockId: c.blockId,
                 style: c.style
               }) 
             }
@@ -387,6 +393,7 @@ const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: nu
       let keyData = {
         value: key, 
         source: '@KEY',
+        sourceBlockId: '@KEY',
         rowSpan: 1, colSpan: 1,
         isUsed: false,
         isLeaf,
@@ -411,6 +418,7 @@ const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: nu
         interColumnTable[headerDepth][innerY+outerY+bias] = {
           value: headValue,
           source,
+          sourceBlockId,
           rowSpan: span, colSpan: 1,
           isUsed: false, 
           isLeaf,
@@ -423,6 +431,7 @@ const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: nu
         interColumnTable[headerDepth][innerY+outerY+bias] = {
           value: headValue,
           source,
+          sourceBlockId,
           rowSpan: span, colSpan: 1,
           isUsed: false,
           isLeaf,
@@ -437,6 +446,7 @@ const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: nu
           interColumnTable[headerDepth][innerY+outerY+j+bias] = {
             value: headValue,
             source,
+            sourceBlockId,
             rowSpan: span, colSpan: iterCount,
             isUsed: false,
             isLeaf,
@@ -456,6 +466,7 @@ const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: nu
               extra.cellTable[innerY+outerY+bias].push({
                 value: aggregate_use(extra.preVal, extra.data, c.attrName, FUNC_SUM),
                 source: c.attrName,
+                sourceBlockId: c.blockId,
                 style: c.style
               }) 
             // Process attr cell
@@ -463,6 +474,7 @@ const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: nu
               extra.cellTable[innerY+outerY+bias].push({
                 value: get_cell_val(extra.preVal, extra.data, c.attrName),
                 source: c.attrName,
+                sourceBlockId: c.blockId,
                 style: c.style
               }) 
             }
@@ -498,15 +510,17 @@ const gen_inter_cross_table = (interCrossTable, rowExtra, colExtra, cell) => {
             interCrossTable[x][y] = {
               value: aggregate_use({...rowValIdx[i].preVal, ...colValIdx[j].preVal}, rowExtra.data, 
                 c.attrName, FUNC_SUM),
+              // source: c.attrName,
+              sourceBlockId: c.blockId,
               rowSpan: 1, colSpan: 1,
-              source: c.attrName,
               style: c.style
             }
           } else {
             interCrossTable[x][y] = {
               value: get_cell_val({...rowValIdx[i].preVal, ...colValIdx[j].preVal}, rowExtra.data, c.attrName),
+              // source: c.attrName,
+              sourceBlockId: c.blockId,
               rowSpan: 1, colSpan: 1,
-              source: c.attrName,
               style: c.style
             }
           }
@@ -602,7 +616,7 @@ const gen_blank_facet_table = (rawTable, header, info, depth, outerX,
     if(hb.blankLine) blankLine += Math.ceil(hb.values.length / hb.facet)
   }
   let delta1 = isPreMerge ? 1 : 0, delta2 = isPreMerge?0:1
-  return [innerX+delta1, maxLen+delta2, facetSpan+delta1, blankLine]
+  return [innerX+delta1, maxLen, facetSpan+delta1, blankLine]
 }
 
 const gen_final_table = (table, tableClass) => {
@@ -753,7 +767,8 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
         if(tmp.value) {
           processTable[i].push({
             value: tmp.value, 
-            source: tmp.source,
+            // source: tmp.source,
+            sourceBlockId: tmp.sourceBlockId,
             rowSpan: tmp.rowSpan, 
             colSpan: tmp.colSpan,
             style: tmp.style
@@ -761,7 +776,8 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
         } else {
           processTable[i].push({
             value: tmp.value, 
-            source: tmp.source,
+            // source: tmp.source,
+            sourceBlockId: tmp.sourceBlockId,
             rowSpan: 1, 
             colSpan: headKeySpan[j],
             style: tmp.style
@@ -775,7 +791,8 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
         tmpLength[i]++
         processTable[i].push({
           value: c.value,
-          source: c.source,
+          // source: c.source,
+          sourceBlockId: c.sourceBlockId,
           rowSpan: 1,
           colSpan: 1,
           style: c.style
@@ -788,7 +805,8 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
       let resLength = maxLength - tmpLength[i]
       for(let j=0; j<resLength; j++) processTable[i].push({
           value: undefined as any,
-          source: undefined as any,
+          // source: undefined as any,
+          sourceBlockId: undefined as any,
           rowSpan: 1,
           colSpan: 1,
           style: undefined as any
@@ -802,7 +820,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
       // oldTable: JSON.parse(JSON.stringify(processTable))
     }
     gen_blank_facet_table(processTable, rowHeader, info, 0, 0)
-    console.log('new', processTable);
+    // console.log('new', processTable);
     finalTable =  gen_final_table(processTable, tbClass)
     console.log('final', finalTable);
 
@@ -857,7 +875,8 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
         if(tmp.value) {
           processTable[j].push({
             value: tmp.value, 
-            source: tmp.source,
+            // source: tmp.source,
+            sourceBlockId: tmp.sourceBlockId,
             rowSpan: tmp.rowSpan, 
             colSpan: tmp.colSpan,
             style: tmp.style
@@ -865,7 +884,8 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
         } else {
           processTable[j].push({
             value: tmp.value, 
-            source: tmp.source,
+            // source: tmp.source,
+            sourceBlockId: tmp.sourceBlockId,
             rowSpan: headKeySpan[i], 
             colSpan: 1,
             style: tmp.style
@@ -879,7 +899,8 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
         tmpLength[j]++
         processTable[j].push({
           value: c.value,
-          source: c.source,
+          // source: c.source,
+          sourceBlockId: c.sourceBlockId,
           rowSpan: 1,
           colSpan: 1,
           style: c.style
@@ -892,7 +913,8 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
       let resLength = maxLength - tmpLength[i]
       for(let j=0; j<resLength; j++) processTable[i].push({
           value: undefined as any,
-          source: undefined as any,
+          // source: undefined as any,
+          sourceBlockId: undefined as any,
           rowSpan: 1,
           colSpan: 1,
           style: undefined as any
@@ -906,7 +928,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
       // oldTable: JSON.parse(JSON.stringify(processTable))
     }
     gen_blank_facet_table(processTable, columnHeader, info, 0, 0)
-    console.log('new', processTable);
+    // console.log('new', processTable);
     finalTable =  gen_final_table(processTable, tbClass)
     console.log('final', finalTable);
   } else {
@@ -1022,7 +1044,8 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
           if(tmp.value) {
             rowProcess[i][j] = {
               value: tmp.value, 
-              source: tmp.source,
+              // source: tmp.source,
+              sourceBlockId: tmp.sourceBlockId,
               rowSpan: tmp.rowSpan, 
               colSpan: tmp.colSpan,
               style: tmp.style
@@ -1030,7 +1053,8 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
           } else {
             rowProcess[i][j] = {
               value: tmp.value, 
-              source: tmp.source,
+              // source: tmp.source,
+              sourceBlockId: tmp.sourceBlockId,
               rowSpan: 1, 
               colSpan: headKeyRowSpan[j],
               style: tmp.style
@@ -1089,7 +1113,8 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
           if(tmp.value) {
             colProcess[j].push({
               value: tmp.value, 
-              source: tmp.source,
+              // source: tmp.source,
+              sourceBlockId: tmp.sourceBlockId,
               rowSpan: tmp.rowSpan, 
               colSpan: tmp.colSpan,
               style: tmp.style
@@ -1097,7 +1122,8 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
           } else {
             colProcess[j].push({
               value: tmp.value, 
-              source: tmp.source,
+              // source: tmp.source,
+              sourceBlockId: tmp.sourceBlockId,
               rowSpan: headKeyColSpan[i], 
               colSpan: 1,
               style: tmp.style
@@ -1118,7 +1144,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
         alignHeader: rowPart,
       }
       gen_blank_facet_table(colProcess, columnHeader, colInfo, 0, 0)
-      // console.log('new', colProcess);
+      // console.log('new', colProcess, maxLength);
       colPart =  gen_final_table(colProcess, COLUM_TABLE)
       // console.log('final', colPart);
       for(let j=0; j<rowPart.length; j++) {
@@ -1137,7 +1163,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
       for(let i=0; i<colDepth; i++) rs += headKeyColSpan[i]
       for(let i=0; i<rowDepth; i++) cs += headKeyRowSpan[i]
       finalTable[0].unshift({
-        value: undefined as any, source: undefined as any,
+        value: undefined as any, sourceBlockId: undefined as any,
         rowSpan: rs, colSpan: cs,
         style: undefined as any
       })
@@ -1171,7 +1197,8 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
           if(tmp.value) {
             colProcess[i][j] = {
               value: tmp.value, 
-              source: tmp.source,
+              // source: tmp.source,
+              sourceBlockId: tmp.sourceBlockId,
               rowSpan: tmp.rowSpan, 
               colSpan: tmp.colSpan,
               style: tmp.style
@@ -1179,7 +1206,8 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
           } else {
             colProcess[i][j] = {
               value: tmp.value, 
-              source: tmp.source,
+              // source: tmp.source,
+              sourceBlockId: tmp.sourceBlockId,
               rowSpan: headKeyColSpan[i], 
               colSpan: 1,
               style: tmp.style
@@ -1238,7 +1266,8 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
           if(tmp.value) {
             rowProcess[i].push({
               value: tmp.value, 
-              source: tmp.source,
+              // source: tmp.source,
+              sourceBlockId: tmp.sourceBlockId,
               rowSpan: tmp.rowSpan, 
               colSpan: tmp.colSpan,
               style: tmp.style
@@ -1246,7 +1275,8 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
           } else {
             rowProcess[i].push({
               value: tmp.value, 
-              source: tmp.source,
+              // source: tmp.source,
+              sourceBlockId: tmp.sourceBlockId,
               rowSpan: 1, 
               colSpan: headKeyRowSpan[j],
               style: tmp.style
@@ -1284,7 +1314,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
       for(let i=0; i<colDepth; i++) rs += headKeyColSpan[i]
       for(let i=0; i<rowDepth; i++) cs += headKeyRowSpan[i]
       finalTable[0].unshift({
-        value: undefined as any, source: undefined as any,
+        value: undefined as any, sourceBlockId: undefined as any,
         rowSpan: rs, colSpan: cs,
         style: undefined as any
       })
@@ -1293,6 +1323,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
   }
   console.log(rowDepth, colDepth, rowSize, colSize);
   
+  return finalTable
 }
 
 const transform = (task: Spec) => {
@@ -1310,7 +1341,7 @@ const transform = (task: Spec) => {
   }
 
 
-  table_process(tableClass, data, {rowHeader, columnHeader, cell, attrInfo})
+  return table_process(tableClass, data, {rowHeader, columnHeader, cell, attrInfo})
 }
 
 export {spec_init, transform}

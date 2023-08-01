@@ -47,6 +47,7 @@ let spec = {
       blockId: "22222",
       values: ["CHN", "JPN"],
       entityMerge: false,
+      // facet: 2,
     }]
     // }, {
     //   function: "sum",
@@ -64,12 +65,14 @@ let spec = {
       blockId: "22222",
       values: ["GBR", "FRA"],
       entityMerge: false,
+      // facet: 2,
     }]
   }],
   columnHeader: [{
     attrName: "year",
     blockId: "44444",
     entityMerge: false,
+    // facet: 3,
     // blankLine: true,
     // key: {
     //   position: "top",
@@ -120,7 +123,7 @@ let spec = {
 }
 
 // tableShop.utils.transform({data, spec})
-tableShop.utils.transform({ data, spec: spec })
+let res = tableShop.utils.transform({ data, spec: spec })
 
 // 参考输出
 let output = [
