@@ -36,7 +36,11 @@ const header_fill = (attrInfo: AttrInfo, header?: HeaderChannel): void => {
 
 // init spec default value
 const spec_init = (task: Spec): void => {
-  let { rowHeader, columnHeader, cell, styles, attrInfo } = task.spec
+  let { data, spec } = task;
+  if(spec.rowHeader === undefined) spec.rowHeader = new Array()
+  if(spec.columnHeader === undefined) spec.columnHeader = new Array()
+  if(spec.cell === undefined) spec.cell = new Array()
+  let { rowHeader, columnHeader, cell, styles, attrInfo } = spec
   // make sure the header can not be both undefined
   if((rowHeader===undefined || rowHeader.length===0) && 
             (columnHeader===undefined || columnHeader.length===0)) {
@@ -1329,12 +1333,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
 
 const transform = (task: Spec) => {
   let { data, spec } = task;
-  
-  // if(spec.rowHeader === undefined) spec.rowHeader = new Array()
-  // if(spec.colHeader === undefined) spec.colHeader = new Array()
-  if(spec.cell === undefined) spec.cell = new Array()
   spec_init({data, spec})
-
   let { rowHeader, columnHeader, cell, styles, attrInfo } = spec
   
   // check table class
