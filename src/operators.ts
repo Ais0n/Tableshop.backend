@@ -38,7 +38,8 @@ const header_fill = (attrInfo: AttrInfo, header?: HeaderChannel): void => {
 const spec_init = (task: Spec): void => {
   let { rowHeader, columnHeader, cell, styles, attrInfo } = task.spec
   // make sure the header can not be both undefined
-  if(rowHeader===undefined && columnHeader===undefined) {
+  if((rowHeader===undefined || rowHeader.length===0) && 
+            (columnHeader===undefined || columnHeader.length===0)) {
     throw new Error("RowHeader and ColumnHeader can not be both undefined!")
   } else {
     for(let header of [rowHeader, columnHeader]) {
@@ -822,7 +823,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
     gen_blank_facet_table(processTable, rowHeader, info, 0, 0)
     // console.log('new', processTable);
     finalTable =  gen_final_table(processTable, tbClass)
-    console.log('final', finalTable);
+    console.log('final row', finalTable);
 
   } else if(tbClass == COLUM_TABLE) {
     let headTmpSpan = Array.from({length: colDepth}, () => ({}))
@@ -861,7 +862,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
     interTable = Array.from({length: colDepth}, () => new Array(colSize)
                   .fill(null).map(_ => ({rowSpan: 1, colSpan: 1})))
     gen_inter_column_table(interTable, columnHeader, extra, colSize, 0, 0)
-    console.log('@@', interTable);
+    // console.log('@@', interTable);
     let maxLength = 0, tmpLength: number[] = []
     // console.log('cell', extra.cellTable);
     for(let j=0; j<colSize; j++) {
@@ -930,7 +931,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
     gen_blank_facet_table(processTable, columnHeader, info, 0, 0)
     // console.log('new', processTable);
     finalTable =  gen_final_table(processTable, tbClass)
-    console.log('final', finalTable);
+    console.log('final column', finalTable);
   } else {
     // Row Header Process
     let headRowTmpSpan = Array.from({length: rowDepth}, () => ({}))
@@ -1167,7 +1168,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
         rowSpan: rs, colSpan: cs,
         style: undefined as any
       })
-      console.log('final', finalTable);
+      console.log('final cross', finalTable);
     } else {
       // rowHeader with cell
       let colProcess = new Array(), colProcTrans = new Array()
@@ -1318,7 +1319,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
         rowSpan: rs, colSpan: cs,
         style: undefined as any
       })
-      console.log('final', finalTable);
+      console.log('final cross', finalTable);
     }
   }
   console.log(rowDepth, colDepth, rowSize, colSize);
@@ -1328,13 +1329,18 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
 
 const transform = (task: Spec) => {
   let { data, spec } = task;
+  
+  // if(spec.rowHeader === undefined) spec.rowHeader = new Array()
+  // if(spec.colHeader === undefined) spec.colHeader = new Array()
+  if(spec.cell === undefined) spec.cell = new Array()
   spec_init({data, spec})
+
   let { rowHeader, columnHeader, cell, styles, attrInfo } = spec
   
   // check table class
   let tableClass = ""
-  if(rowHeader !== undefined) {
-    if(columnHeader !== undefined) tableClass = CROSS_TABLE
+  if(rowHeader !== undefined && rowHeader.length > 0) {
+    if(columnHeader !== undefined  && columnHeader.length > 0) tableClass = CROSS_TABLE
     else tableClass = ROW_TABLE
   } else {
     tableClass = COLUM_TABLE
