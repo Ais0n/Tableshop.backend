@@ -30,41 +30,136 @@ let data = {
 }
 
 let spec = {
-  rowHeader: [{
-    attrName: "continent",
-    blockId: "11111",
-    entityMerge: false,
-    }
-    // }, {
-    //   function: "sum",
-    //   blockId: "33333",
-    //   entityMerge: false,
-    // }],
+  "rowHeader": [
+      {
+          "attrName": "continent",
+          "blockId": "bf4f90d0-07b7-49f3-8a50-8dbe00d67b74",
+          "left": 84,
+          "top": 90,
+          "width": 140,
+          "height": 60,
+          "channel": "row",
+          "entityMerge": false,
+          "gridMerge": true,
+          "facet": 1,
+          "blankLine": false,
+          "style": "TODO",
+          "values": [
+              "Asia",
+              "Europe"
+          ],
+          "children": [
+              {
+                  "attrName": "country",
+                  "blockId": "ac0d8a18-34a3-441e-b280-54d33736b9f6",
+                  "entityMerge": false,
+                  "gridMerge": true,
+                  "facet": 1,
+                  "blankLine": false,
+                  "style": "TODO",
+                  "values": [
+                      "CHN",
+                      "JPN",
+                      "GBR",
+                      "FRA"
+                  ]
+              }
+          ]
+      }
   ],
-  columnHeader: [],
-  cell: [],
-  attrInfo: [{
-    name: "continent",
-    dataType: "categorical",
-    values: ["Asia", "Europe"],
-  }, {
-    name: "country",
-    dataType: "categorical",
-    values: ["CHN", "JPN", "GBR", "FRA"]
-  }, {
-    name: "year",
-    dataType: "categorical",
-    values: ["2019", "2020", "2021"]
-  }, {
-    name: "season",
-    dataType: "categorical",
-    values: ["spr", "aut"],
-  }, {
-    name: "sales",
-    dataType: "numerical",
-    values: [105, 110, 120, 125, 131, 150, 60, 80, 82, 92, 95, 110, 80, 92, 95, 104, 112, 136, 59, 63, 72, 79, 86, 90],
-  },],
-  styles: undefined
+  "columnHeader": [
+      {
+          "attrName": "year",
+          "blockId": "0fb0864c-e832-4b6f-85cc-056f09d4301b",
+          "left": 245,
+          "top": 77,
+          "width": 140,
+          "height": 60,
+          "channel": "column",
+          "entityMerge": false,
+          "gridMerge": true,
+          "facet": 1,
+          "blankLine": false,
+          "style": "TODO",
+          "values": [
+              "2019",
+              "2020",
+              "2021"
+          ]
+      }
+  ],
+  "cell": [
+      {
+          "attrName": "sales",
+          "blockId": "b57e8cb9-e940-4d95-a9ad-af1a26ec1f71",
+          "rowParentId": "ac0d8a18-34a3-441e-b280-54d33736b9f6",
+          "colParentId": "0fb0864c-e832-4b6f-85cc-056f09d4301b",
+          "style": "TODO2"
+      }
+  ],
+  "attrInfo": [
+      {
+          "name": "continent",
+          "values": [
+              "Asia",
+              "Europe"
+          ],
+          "dataType": "categorical"
+      },
+      {
+          "name": "country",
+          "values": [
+              "CHN",
+              "JPN",
+              "GBR",
+              "FRA"
+          ],
+          "dataType": "categorical"
+      },
+      {
+          "name": "year",
+          "values": [
+              "2019",
+              "2020",
+              "2021"
+          ],
+          "dataType": "categorical"
+      },
+      {
+          "name": "season",
+          "values": [
+              "spr",
+              "aut"
+          ],
+          "dataType": "categorical"
+      },
+      {
+          "name": "sales",
+          "values": [
+              105,
+              110,
+              120,
+              125,
+              131,
+              150,
+              60,
+              80,
+              82,
+              92,
+              95,
+              104,
+              112,
+              136,
+              59,
+              63,
+              72,
+              79,
+              86,
+              90
+          ],
+          "dataType": "numerical"
+      }
+  ]
 }
 
 let res = tableShop.utils.transform({ data, spec: spec })

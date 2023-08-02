@@ -96,23 +96,31 @@ var header_fill = function (attrInfo, header) {
 };
 // init spec default value
 var spec_init = function (task) {
-    var _a = task.spec, rowHeader = _a.rowHeader, columnHeader = _a.columnHeader, cell = _a.cell, styles = _a.styles, attrInfo = _a.attrInfo;
+    task.data; var spec = task.spec;
+    if (spec.rowHeader === undefined)
+        spec.rowHeader = new Array();
+    if (spec.columnHeader === undefined)
+        spec.columnHeader = new Array();
+    if (spec.cell === undefined)
+        spec.cell = new Array();
+    var rowHeader = spec.rowHeader, columnHeader = spec.columnHeader, cell = spec.cell, styles = spec.styles, attrInfo = spec.attrInfo;
     // make sure the header can not be both undefined
-    if (rowHeader === undefined && columnHeader === undefined) {
+    if ((rowHeader === undefined || rowHeader.length === 0) &&
+        (columnHeader === undefined || columnHeader.length === 0)) {
         throw new Error("RowHeader and ColumnHeader can not be both undefined!");
     }
     else {
-        for (var _i = 0, _b = [rowHeader, columnHeader]; _i < _b.length; _i++) {
-            var header = _b[_i];
+        for (var _i = 0, _a = [rowHeader, columnHeader]; _i < _a.length; _i++) {
+            var header = _a[_i];
             header_fill(attrInfo, header);
         }
-        for (var _c = 0, cell_1 = cell; _c < cell_1.length; _c++) {
-            var c = cell_1[_c];
+        for (var _b = 0, cell_1 = cell; _b < cell_1.length; _b++) {
+            var c = cell_1[_b];
             c.style = "TODO2";
         }
         if (styles !== undefined) {
-            for (var _d = 0, styles_1 = styles; _d < styles_1.length; _d++) {
-                var s = styles_1[_d];
+            for (var _c = 0, styles_1 = styles; _c < styles_1.length; _c++) {
+                var s = styles_1[_c];
                 s.indent = '\t';
             }
         }
@@ -939,7 +947,7 @@ var table_process = function (tbClass, data, _a) {
         gen_blank_facet_table(processTable, rowHeader, info, 0, 0);
         // console.log('new', processTable);
         finalTable = gen_final_table(processTable, tbClass);
-        console.log('final', finalTable);
+        console.log('final row', finalTable);
     }
     else if (tbClass == COLUM_TABLE) {
         var headTmpSpan = Array.from({ length: colDepth }, function () { return ({}); });
@@ -985,7 +993,7 @@ var table_process = function (tbClass, data, _a) {
         interTable = Array.from({ length: colDepth }, function () { return new Array(colSize)
             .fill(null).map(function (_) { return ({ rowSpan: 1, colSpan: 1 }); }); });
         gen_inter_column_table(interTable, columnHeader, extra, colSize, 0, 0);
-        console.log('@@', interTable);
+        // console.log('@@', interTable);
         var maxLength = 0, tmpLength = [];
         // console.log('cell', extra.cellTable);
         for (var j = 0; j < colSize; j++) {
@@ -1057,7 +1065,7 @@ var table_process = function (tbClass, data, _a) {
         gen_blank_facet_table(processTable, columnHeader, info, 0, 0);
         // console.log('new', processTable);
         finalTable = gen_final_table(processTable, tbClass);
-        console.log('final', finalTable);
+        console.log('final column', finalTable);
     }
     else {
         // Row Header Process
@@ -1311,7 +1319,7 @@ var table_process = function (tbClass, data, _a) {
                 rowSpan: rs, colSpan: cs,
                 style: undefined
             });
-            console.log('final', finalTable);
+            console.log('final cross', finalTable);
         }
         else {
             // rowHeader with cell
@@ -1468,7 +1476,7 @@ var table_process = function (tbClass, data, _a) {
                 rowSpan: rs, colSpan: cs,
                 style: undefined
             });
-            console.log('final', finalTable);
+            console.log('final cross', finalTable);
         }
     }
     console.log(rowDepth, colDepth, rowSize, colSize);
@@ -1480,8 +1488,8 @@ var transform = function (task) {
     var rowHeader = spec.rowHeader, columnHeader = spec.columnHeader, cell = spec.cell; spec.styles; var attrInfo = spec.attrInfo;
     // check table class
     var tableClass = "";
-    if (rowHeader !== undefined) {
-        if (columnHeader !== undefined)
+    if (rowHeader !== undefined && rowHeader.length > 0) {
+        if (columnHeader !== undefined && columnHeader.length > 0)
             tableClass = CROSS_TABLE;
         else
             tableClass = ROW_TABLE;
