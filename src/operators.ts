@@ -510,7 +510,7 @@ const gen_inter_cross_table = (interCrossTable, rowExtra, colExtra, cell) => {
       for(let c of cell) {
         if(c.rowParentId === rowValIdx[i].blockId && c.colParentId === colValIdx[j].blockId) {
           let x = rowValIdx[i].idx, y = colValIdx[j].idx
-          if(rowValIdx[i].isAgg || colValIdx[i].isAgg) {
+          if(rowValIdx[i].isAgg || colValIdx[j].isAgg) {
             if(!agg_type_check(rowExtra.attrInfo, c.attrName)) throw new Error("Function can only be used to numerical>")
             interCrossTable[x][y] = {
               value: aggregate_use({...rowValIdx[i].preVal, ...colValIdx[j].preVal}, rowExtra.data, 
@@ -1014,8 +1014,8 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
     gen_inter_row_table(interTable, rowHeader, rowExtra, rowSize, 0, 0, colDepth)
     gen_inter_column_table(interTable, columnHeader, colExtra, colSize, 0, 0, rowDepth)
 
-    // console.log('valIdx', rowExtra.valIdx)
-    // console.log('valIdx', colExtra.valIdx);
+    console.log('valIdx', rowExtra.valIdx)
+    console.log('valIdx', colExtra.valIdx);
     gen_inter_cross_table(interTable, rowExtra, colExtra, cell)
     // console.log('@', interTable)
 

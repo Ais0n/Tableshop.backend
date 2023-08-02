@@ -26,11 +26,6 @@ var __assign = function() {
     return __assign.apply(this, arguments);
 };
 
-typeof SuppressedError === "function" ? SuppressedError : function (error, suppressed, message) {
-    var e = new Error(message);
-    return e.name = "SuppressedError", e.error = error, e.suppressed = suppressed, e;
-};
-
 var SourceTableFormat;
 (function (SourceTableFormat) {
     SourceTableFormat["JSON"] = "json";
@@ -595,7 +590,7 @@ var gen_inter_cross_table = function (interCrossTable, rowExtra, colExtra, cell)
                 var c = cell_2[_i];
                 if (c.rowParentId === rowValIdx[i].blockId && c.colParentId === colValIdx[j].blockId) {
                     var x = rowValIdx[i].idx, y = colValIdx[j].idx;
-                    if (rowValIdx[i].isAgg || colValIdx[i].isAgg) {
+                    if (rowValIdx[i].isAgg || colValIdx[j].isAgg) {
                         if (!agg_type_check(rowExtra.attrInfo, c.attrName))
                             throw new Error("Function can only be used to numerical>");
                         interCrossTable[x][y] = {
@@ -1158,8 +1153,8 @@ var table_process = function (tbClass, data, _a) {
             .fill(null).map(function (_) { return ({ rowSpan: 1, colSpan: 1 }); }); });
         gen_inter_row_table(interTable, rowHeader, rowExtra, rowSize, 0, 0, colDepth);
         gen_inter_column_table(interTable, columnHeader, colExtra, colSize, 0, 0, rowDepth);
-        // console.log('valIdx', rowExtra.valIdx)
-        // console.log('valIdx', colExtra.valIdx);
+        console.log('valIdx', rowExtra.valIdx);
+        console.log('valIdx', colExtra.valIdx);
         gen_inter_cross_table(interTable, rowExtra, colExtra, cell);
         // console.log('@', interTable)
         var rowPart = new Array(), colPart = new Array();
