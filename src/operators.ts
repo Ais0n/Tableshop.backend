@@ -29,6 +29,7 @@ const header_fill = (attrInfo: AttrInfo, header?: HeaderChannel): void => {
         return obj.name == hb.attrName
       })!
       hb.values = hb.values ?? attr.values
+      // if(hb.children && hb.children.length===0) hb.children = undefined
       header_fill(attrInfo, hb.children)
     }
   }
@@ -85,7 +86,7 @@ const calc_head_size = (channel?: HeaderChannel): number => {
         size += calc_head_size(hb.children)
       }
     } else {
-      let s = hb.children ? calc_head_size(hb.children) : 1
+      let s = (hb.children && hb.children.length>0) ? calc_head_size(hb.children) : 1
       size += s * (hb.values!.length)
     } 
   }
@@ -247,7 +248,7 @@ const agg_type_check = (attrInfo: AttrInfo, attrName: string): boolean => {
 // generate intermediate row table
 const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, depth: number, 
   outerX: number, bias = 0, isPreMerge = false, preKey = '', keyBias = 0): number => {
-  if(rowHeader === undefined) return 1
+  if(rowHeader === undefined || rowHeader.length === 0) return 1
   let innerX = 0, rhId = -1
   let leftBias = 0, rightBias = 0
   let [lb, rb] = extra.layersBias[depth]
@@ -285,7 +286,7 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
           outerX+innerX, bias, rh.entityMerge, key, currentKeyLayer+keyBias)
       }
       if(innerX+outerX+iterCount > width) {
-        console.log('Error', innerX, outerX, iterCount);
+        console.log('Error', innerX, outerX, iterCount, width);
         throw new Error("Over rowHeader width!")
       }
       // process entities merged
@@ -376,7 +377,7 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
 // generate intermediate column table
 const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: number, depth: number, 
   outerY: number, bias = 0, isPreMerge = false, preKey = '', keyBias = 0): number => {
-  if(columnHeader === undefined) return 1
+  if(columnHeader === undefined || columnHeader.length === 0) return 1
   let innerY = 0, chId = -1
   let topBias = 0, bottomBias = 0
   let [tb, bb] = extra.layersBias[depth]
@@ -414,7 +415,7 @@ const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: nu
           outerY+innerY, bias, ch.entityMerge, key, currentKeyLayer+keyBias)
       }
       if(innerY+outerY+iterCount > width) {
-        console.log('Error', innerY, outerY, iterCount);
+        console.log('Error', innerY, outerY, iterCount, width);
         throw new Error("Over columnHeader width!")
       }
       // process entities merged
@@ -538,7 +539,7 @@ const gen_inter_cross_table = (interCrossTable, rowExtra, colExtra, cell) => {
 // generate facet and blankLine structure table
 const gen_blank_facet_table = (rawTable, header, info, depth, outerX, 
   bias = 0, isPreMerge = false, keyBias = 0) => {
-  if(header === undefined) return [1, info.cellLength, 1, 0]
+  if(header === undefined || header.length === 0) return [1, info.cellLength, 1, 0]
   let innerX = 0, maxLen = info.cellLength, facetSpan = 0, blankLine = 0
   let [beforeBias, afterBias] = info.layersBias[depth]
   let keyLayer = beforeBias+afterBias
@@ -755,6 +756,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
       layersBias,
       headSpan
     }
+    console.log('@@@', rowSize, rowDepth);
     interTable = Array.from({length: rowSize}, () => new Array(rowDepth)
                   .fill(null).map(_ => ({rowSpan: 1, colSpan: 1})))
     gen_inter_row_table(interTable, rowHeader, extra, rowSize, 0, 0)
@@ -936,6 +938,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
     // console.log('new', processTable);
     finalTable =  gen_final_table(processTable, tbClass)
     console.log('final column', finalTable);
+
   } else {
     // Row Header Process
     let headRowTmpSpan = Array.from({length: rowDepth}, () => ({}))
@@ -1014,8 +1017,8 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
     gen_inter_row_table(interTable, rowHeader, rowExtra, rowSize, 0, 0, colDepth)
     gen_inter_column_table(interTable, columnHeader, colExtra, colSize, 0, 0, rowDepth)
 
-    console.log('valIdx', rowExtra.valIdx)
-    console.log('valIdx', colExtra.valIdx);
+    // console.log('valIdx', rowExtra.valIdx)
+    // console.log('valIdx', colExtra.valIdx);
     gen_inter_cross_table(interTable, rowExtra, colExtra, cell)
     // console.log('@', interTable)
 
@@ -1333,7 +1336,13 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
 
 const transform = (task: Spec) => {
   let { data, spec } = task;
-  spec_init({data, spec})
+  try {
+    spec_init({data, spec})
+  }
+  catch(err) {
+    console.log('Warning:', err.message);
+    return new Array()
+  }
   let { rowHeader, columnHeader, cell, styles, attrInfo } = spec
   
   // check table class
