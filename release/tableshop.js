@@ -86,6 +86,7 @@ var header_fill = function (attrInfo, header) {
                 return obj.name == hb.attrName;
             });
             hb.values = (_e = hb.values) !== null && _e !== void 0 ? _e : attr.values;
+            // if(hb.children && hb.children.length===0) hb.children = undefined
             header_fill(attrInfo, hb.children);
         };
         for (var _i = 0, header_1 = header; _i < header_1.length; _i++) {
@@ -156,7 +157,7 @@ var calc_head_size = function (channel) {
             }
         }
         else {
-            var s = hb.children ? calc_head_size(hb.children) : 1;
+            var s = (hb.children && hb.children.length > 0) ? calc_head_size(hb.children) : 1;
             size += s * (hb.values.length);
         }
     }
@@ -309,7 +310,7 @@ var gen_inter_row_table = function (interRowTable, rowHeader, extra, width, dept
     if (isPreMerge === void 0) { isPreMerge = false; }
     if (preKey === void 0) { preKey = ''; }
     if (keyBias === void 0) { keyBias = 0; }
-    if (rowHeader === undefined)
+    if (rowHeader === undefined || rowHeader.length === 0)
         return 1;
     var innerX = 0;
     var leftBias = 0, rightBias = 0;
@@ -350,7 +351,7 @@ var gen_inter_row_table = function (interRowTable, rowHeader, extra, width, dept
                 iterCount = gen_inter_row_table(interRowTable, rh.children, extra, width, depth + 1, outerX + innerX, bias, rh.entityMerge, key, currentKeyLayer + keyBias);
             }
             if (innerX + outerX + iterCount > width) {
-                console.log('Error', innerX, outerX, iterCount);
+                console.log('Error', innerX, outerX, iterCount, width);
                 throw new Error("Over rowHeader width!");
             }
             // process entities merged
@@ -450,7 +451,7 @@ var gen_inter_column_table = function (interColumnTable, columnHeader, extra, wi
     if (isPreMerge === void 0) { isPreMerge = false; }
     if (preKey === void 0) { preKey = ''; }
     if (keyBias === void 0) { keyBias = 0; }
-    if (columnHeader === undefined)
+    if (columnHeader === undefined || columnHeader.length === 0)
         return 1;
     var innerY = 0;
     var topBias = 0, bottomBias = 0;
@@ -491,7 +492,7 @@ var gen_inter_column_table = function (interColumnTable, columnHeader, extra, wi
                 iterCount = gen_inter_column_table(interColumnTable, ch.children, extra, width, depth + 1, outerY + innerY, bias, ch.entityMerge, key, currentKeyLayer + keyBias);
             }
             if (innerY + outerY + iterCount > width) {
-                console.log('Error', innerY, outerY, iterCount);
+                console.log('Error', innerY, outerY, iterCount, width);
                 throw new Error("Over columnHeader width!");
             }
             // process entities merged
@@ -593,7 +594,7 @@ var gen_inter_cross_table = function (interCrossTable, rowExtra, colExtra, cell)
                 var c = cell_2[_i];
                 if (c.rowParentId === rowValIdx[i].blockId && c.colParentId === colValIdx[j].blockId) {
                     var x = rowValIdx[i].idx, y = colValIdx[j].idx;
-                    if (rowValIdx[i].isAgg || colValIdx[i].isAgg) {
+                    if (rowValIdx[i].isAgg || colValIdx[j].isAgg) {
                         if (!agg_type_check(rowExtra.attrInfo, c.attrName))
                             throw new Error("Function can only be used to numerical>");
                         interCrossTable[x][y] = {
@@ -624,7 +625,7 @@ var gen_blank_facet_table = function (rawTable, header, info, depth, outerX, bia
     if (bias === void 0) { bias = 0; }
     if (isPreMerge === void 0) { isPreMerge = false; }
     if (keyBias === void 0) { keyBias = 0; }
-    if (header === undefined)
+    if (header === undefined || header.length === 0)
         return [1, info.cellLength, 1, 0];
     var innerX = 0, maxLen = info.cellLength, facetSpan = 0, blankLine = 0;
     var _c = info.layersBias[depth], beforeBias = _c[0], afterBias = _c[1];
@@ -872,6 +873,7 @@ var table_process = function (tbClass, data, _a) {
             layersBias: layersBias,
             headSpan: headSpan
         };
+        console.log('@@@', rowSize, rowDepth);
         interTable = Array.from({ length: rowSize }, function () { return new Array(rowDepth)
             .fill(null).map(function (_) { return ({ rowSpan: 1, colSpan: 1 }); }); });
         gen_inter_row_table(interTable, rowHeader, extra, rowSize, 0, 0);
@@ -1484,7 +1486,13 @@ var table_process = function (tbClass, data, _a) {
 };
 var transform = function (task) {
     var data = task.data, spec = task.spec;
-    spec_init({ data: data, spec: spec });
+    try {
+        spec_init({ data: data, spec: spec });
+    }
+    catch (err) {
+        console.log('Warning:', err.message);
+        return new Array();
+    }
     var rowHeader = spec.rowHeader, columnHeader = spec.columnHeader, cell = spec.cell; spec.styles; var attrInfo = spec.attrInfo;
     // check table class
     var tableClass = "";

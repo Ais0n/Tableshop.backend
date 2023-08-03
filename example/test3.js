@@ -30,53 +30,17 @@ let data = {
 }
 
 let spec = {
-  "rowHeader": [
-      {
-          "attrName": "continent",
-          "blockId": "bf4f90d0-07b7-49f3-8a50-8dbe00d67b74",
-          "left": 84,
-          "top": 90,
-          "width": 140,
-          "height": 60,
-          "channel": "row",
-          "entityMerge": false,
-          "gridMerge": true,
-          "facet": 1,
-          "blankLine": false,
-          "style": "TODO",
-          "values": [
-              "Asia",
-              "Europe"
-          ],
-          "children": [
-              {
-                  "attrName": "country",
-                  "blockId": "ac0d8a18-34a3-441e-b280-54d33736b9f6",
-                  "entityMerge": false,
-                  "gridMerge": true,
-                  "facet": 1,
-                  "blankLine": false,
-                  "style": "TODO",
-                  "values": [
-                      "CHN",
-                      "JPN",
-                      "GBR",
-                      "FRA"
-                  ]
-              }
-          ]
-      }
-  ],
+  "rowHeader": [],
   "columnHeader": [
       {
           "attrName": "year",
-          "blockId": "0fb0864c-e832-4b6f-85cc-056f09d4301b",
-          "left": 245,
-          "top": 77,
+          "blockId": "60e5f0d4-5668-4b96-a145-1bc86efb2b32",
+          "left": 64,
+          "top": 44,
           "width": 140,
           "height": 60,
           "channel": "column",
-          "entityMerge": false,
+          "entityMerge": true,
           "gridMerge": true,
           "facet": 1,
           "blankLine": false,
@@ -85,18 +49,19 @@ let spec = {
               "2019",
               "2020",
               "2021"
+          ],
+          "unfolded": false,
+          "children": [
+              {
+                  "attrName": "season",
+                  "blockId": "46a383e6-c12a-42bd-89b1-6765e1fd10dc",
+                  "entityMerge": false,
+                  "channel": "column"
+              }
           ]
       }
   ],
-  "cell": [
-      {
-          "attrName": "sales",
-          "blockId": "b57e8cb9-e940-4d95-a9ad-af1a26ec1f71",
-          "rowParentId": "ac0d8a18-34a3-441e-b280-54d33736b9f6",
-          "colParentId": "0fb0864c-e832-4b6f-85cc-056f09d4301b",
-          "style": "TODO2"
-      }
-  ],
+  "cell": [],
   "attrInfo": [
       {
           "name": "continent",

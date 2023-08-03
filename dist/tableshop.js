@@ -26,6 +26,11 @@ var __assign = function() {
     return __assign.apply(this, arguments);
 };
 
+typeof SuppressedError === "function" ? SuppressedError : function (error, suppressed, message) {
+    var e = new Error(message);
+    return e.name = "SuppressedError", e.error = error, e.suppressed = suppressed, e;
+};
+
 var SourceTableFormat;
 (function (SourceTableFormat) {
     SourceTableFormat["JSON"] = "json";
