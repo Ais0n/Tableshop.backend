@@ -40,6 +40,96 @@ let spec = {
           "width": 140,
           "height": 60,
           "channel": "column",
+          "entityMerge": false,
+          "gridMerge": true,
+          "facet": 1,
+          "blankLine": false,
+          "style": "TODO",
+          "values": [
+              "2019",
+              "2020",
+              "2021"
+          ],
+          "unfolded": false,
+      }
+  ],
+  "cell": [],
+  "attrInfo": [
+      {
+          "name": "continent",
+          "values": [
+              "Asia",
+              "Europe"
+          ],
+          "dataType": "categorical"
+      },
+      {
+          "name": "country",
+          "values": [
+              "CHN",
+              "JPN",
+              "GBR",
+              "FRA"
+          ],
+          "dataType": "categorical"
+      },
+      {
+          "name": "year",
+          "values": [
+              "2019",
+              "2020",
+              "2021"
+          ],
+          "dataType": "categorical"
+      },
+      {
+          "name": "season",
+          "values": [
+              "spr",
+              "aut"
+          ],
+          "dataType": "categorical"
+      },
+      {
+          "name": "sales",
+          "values": [
+              105,
+              110,
+              120,
+              125,
+              131,
+              150,
+              60,
+              80,
+              82,
+              92,
+              95,
+              104,
+              112,
+              136,
+              59,
+              63,
+              72,
+              79,
+              86,
+              90
+          ],
+          "dataType": "numerical"
+      }
+  ]
+}
+
+let spec2 = {
+  "rowHeader": [],
+  "columnHeader": [
+      {
+          "attrName": "year",
+          "blockId": "60e5f0d4-5668-4b96-a145-1bc86efb2b32",
+          "left": 64,
+          "top": 44,
+          "width": 140,
+          "height": 60,
+          "channel": "column",
           "entityMerge": true,
           "gridMerge": true,
           "facet": 1,
