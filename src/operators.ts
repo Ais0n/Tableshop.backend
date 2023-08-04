@@ -761,6 +761,10 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
     gen_inter_row_table(interTable, rowHeader, extra, rowSize, 0, 0)
     // console.log('@@@', interTable);
     let maxLength = 0, tmpLength: number[] = []
+    // when cell is empty, fill one row/col(default)
+    for(let ct of extra.cellTable) {
+      if(ct.length === 0) ct.push({rowSpan: 1, colSpan: 1})
+    }
     // console.log('cell', extra.cellTable);
     for(let i=0; i<rowSize; i++) {
       processTable[i] = [], tmpLength[i] = 0
@@ -869,7 +873,11 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
     gen_inter_column_table(interTable, columnHeader, extra, colSize, 0, 0)
     // console.log('@@', interTable);
     let maxLength = 0, tmpLength: number[] = []
-    // console.log('cell', extra.cellTable);
+    // when cell is empty, fill one row/col(default)
+    for(let ct of extra.cellTable) {
+      if(ct.length === 0) ct.push({rowSpan: 1, colSpan: 1})
+    }
+    console.log('cell', extra.cellTable);
     for(let j=0; j<colSize; j++) {
       processTable[j] = [], tmpLength[j] = 0
       for(let i=0; i<colDepth; i++) {

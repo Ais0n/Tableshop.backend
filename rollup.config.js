@@ -4,7 +4,7 @@ export default {
   input: "src/index.ts",
   output: {
     file: "dist/tableShop.js",
-    format: "cjs",
+    format: "es",
     exports: "default",
   },
   plugins: [

@@ -53,7 +53,12 @@ let spec = {
           "unfolded": false,
       }
   ],
-  "cell": [],
+  "cell": [{
+    attrName: "sales",
+    // rowParentId: "22222",
+    colParentId: "60e5f0d4-5668-4b96-a145-1bc86efb2b32",
+    blockId: "66666",
+  }],
   "attrInfo": [
       {
           "name": "continent",

@@ -871,6 +871,12 @@ var table_process = function (tbClass, data, _a) {
         gen_inter_row_table(interTable, rowHeader, extra, rowSize, 0, 0);
         // console.log('@@@', interTable);
         var maxLength = 0, tmpLength = [];
+        // when cell is empty, fill one row/col(default)
+        for (var _b = 0, _c = extra.cellTable; _b < _c.length; _b++) {
+            var ct = _c[_b];
+            if (ct.length === 0)
+                ct.push({ rowSpan: 1, colSpan: 1 });
+        }
         // console.log('cell', extra.cellTable);
         for (var i = 0; i < rowSize; i++) {
             processTable[i] = [], tmpLength[i] = 0;
@@ -904,8 +910,8 @@ var table_process = function (tbClass, data, _a) {
                     interTable[i + k][j].isUsed = true;
                 }
             }
-            for (var _b = 0, _c = extra.cellTable[i]; _b < _c.length; _b++) {
-                var c = _c[_b];
+            for (var _d = 0, _e = extra.cellTable[i]; _d < _e.length; _d++) {
+                var c = _e[_d];
                 tmpLength[i]++;
                 processTable[i].push({
                     value: c.value,
@@ -955,8 +961,8 @@ var table_process = function (tbClass, data, _a) {
         console.log('head span', headSpan);
         var layersBias = [], totalLayer = 0;
         calc_each_key_layer(columnHeader, layersBias, 0, tbClass);
-        for (var _d = 0, layersBias_2 = layersBias; _d < layersBias_2.length; _d++) {
-            var lb = layersBias_2[_d];
+        for (var _f = 0, layersBias_2 = layersBias; _f < layersBias_2.length; _f++) {
+            var lb = layersBias_2[_f];
             totalLayer += lb[0] + lb[1];
         }
         colDepth += totalLayer;
@@ -987,7 +993,13 @@ var table_process = function (tbClass, data, _a) {
         gen_inter_column_table(interTable, columnHeader, extra, colSize, 0, 0);
         // console.log('@@', interTable);
         var maxLength = 0, tmpLength = [];
-        // console.log('cell', extra.cellTable);
+        // when cell is empty, fill one row/col(default)
+        for (var _g = 0, _h = extra.cellTable; _g < _h.length; _g++) {
+            var ct = _h[_g];
+            if (ct.length === 0)
+                ct.push({ rowSpan: 1, colSpan: 1 });
+        }
+        console.log('cell', extra.cellTable);
         for (var j = 0; j < colSize; j++) {
             processTable[j] = [], tmpLength[j] = 0;
             for (var i = 0; i < colDepth; i++) {
@@ -1020,8 +1032,8 @@ var table_process = function (tbClass, data, _a) {
                     interTable[i][j + k].isUsed = true;
                 }
             }
-            for (var _e = 0, _f = extra.cellTable[j]; _e < _f.length; _e++) {
-                var c = _f[_e];
+            for (var _j = 0, _k = extra.cellTable[j]; _j < _k.length; _j++) {
+                var c = _k[_j];
                 tmpLength[j]++;
                 processTable[j].push({
                     value: c.value,
@@ -1072,8 +1084,8 @@ var table_process = function (tbClass, data, _a) {
         console.log('head row span', headRowSpan);
         var layersRowBias = [], totalRowLayer = 0;
         calc_each_key_layer(rowHeader, layersRowBias, 0, ROW_TABLE);
-        for (var _g = 0, layersRowBias_1 = layersRowBias; _g < layersRowBias_1.length; _g++) {
-            var lb = layersRowBias_1[_g];
+        for (var _l = 0, layersRowBias_1 = layersRowBias; _l < layersRowBias_1.length; _l++) {
+            var lb = layersRowBias_1[_l];
             totalRowLayer += lb[0] + lb[1];
         }
         rowDepth += totalRowLayer;
@@ -1111,8 +1123,8 @@ var table_process = function (tbClass, data, _a) {
         console.log('head col span', headColSpan);
         var layersColBias = [], totalColLayer = 0;
         calc_each_key_layer(columnHeader, layersColBias, 0, COLUM_TABLE);
-        for (var _h = 0, layersColBias_1 = layersColBias; _h < layersColBias_1.length; _h++) {
-            var lb = layersColBias_1[_h];
+        for (var _m = 0, layersColBias_1 = layersColBias; _m < layersColBias_1.length; _m++) {
+            var lb = layersColBias_1[_m];
             totalColLayer += lb[0] + lb[1];
         }
         colDepth += totalColLayer;
