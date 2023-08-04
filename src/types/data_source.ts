@@ -48,6 +48,12 @@ export enum Pattern {
   ALPHABETIC = "A"
 }
 
+export enum GridMerge {
+  Merged = "merged",
+  UnmergedFirst = "unmerged-first",
+  UnmergedAll = "unmerged-all"
+}
+
 type Color = string
 
 export interface Key {
@@ -80,7 +86,7 @@ export interface HeaderBlock {
   className?: string;
   key?: Key;
   entityMerge?: boolean;
-  gridMerge?: boolean;
+  gridMerge?: GridMerge;
   // expand?: boolean;
   facet?: number;
   blankLine?: boolean;

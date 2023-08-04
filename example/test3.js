@@ -136,7 +136,7 @@ let spec2 = {
           "height": 60,
           "channel": "column",
           "entityMerge": true,
-          "gridMerge": true,
+          "gridMerge": "merged",
           "facet": 1,
           "blankLine": false,
           "style": "TODO",

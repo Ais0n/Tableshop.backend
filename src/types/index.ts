@@ -2,6 +2,7 @@ import {
   SourceTable, SingleTable,  
   AttrInfoUnit, AttrInfo, DataType,
   Key, KEY_ALPHABETIC, KEY_ROMAN, KEY_NUMERICAL, Pattern, Position,
+  GridMerge,
   BorderStyle, FontStyle, Border,
   HeaderBlock, CellBlock, HeaderChannel, CellChannel, StyleClass,
   FUNC_SUM
@@ -17,6 +18,7 @@ export {
   Spec, SourceTable, SingleTable,
   AttrInfoUnit, AttrInfo, DataType,
   Key, KEY_ALPHABETIC, KEY_ROMAN, KEY_NUMERICAL, Pattern, Position, 
+  GridMerge,
   BorderStyle, FontStyle, Border,
   HeaderBlock, CellBlock, HeaderChannel, CellChannel, StyleClass,
   FUNC_SUM,

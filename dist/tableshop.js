@@ -1,3 +1,5 @@
+'use strict';
+
 /******************************************************************************
 Copyright (c) Microsoft Corporation.
 
@@ -52,6 +54,12 @@ var Pattern;
     Pattern["NUMERICAL"] = "1";
     Pattern["ALPHABETIC"] = "A";
 })(Pattern || (Pattern = {}));
+var GridMerge;
+(function (GridMerge) {
+    GridMerge["Merged"] = "merged";
+    GridMerge["UnmergedFirst"] = "unmerged-first";
+    GridMerge["UnmergedAll"] = "unmerged-all";
+})(GridMerge || (GridMerge = {}));
 // function
 var FUNC_SUM = "sum";
 
@@ -64,7 +72,7 @@ var header_fill = function (attrInfo, header) {
     if (header !== undefined) {
         var _loop_1 = function (hb) {
             hb.entityMerge = (_a = hb.entityMerge) !== null && _a !== void 0 ? _a : false;
-            hb.gridMerge = (_b = hb.gridMerge) !== null && _b !== void 0 ? _b : true;
+            hb.gridMerge = (_b = hb.gridMerge) !== null && _b !== void 0 ? _b : GridMerge.Merged;
             hb.facet = (_c = hb.facet) !== null && _c !== void 0 ? _c : 1;
             hb.blankLine = (_d = hb.blankLine) !== null && _d !== void 0 ? _d : false;
             if (hb.key && Object.keys(hb.key).length === 0)
@@ -362,9 +370,9 @@ var gen_inter_row_table = function (interRowTable, rowHeader, extra, width, dept
                     isKey: false,
                     style: rh.style
                 };
-                // process cells unmerged
+                // process cells unmerged-first
             }
-            else if (!rh.gridMerge) {
+            else if (rh.gridMerge === GridMerge.UnmergedFirst) {
                 interRowTable[innerX + outerX + bias][keyDepth] = keyData;
                 interRowTable[innerX + outerX + bias][headerDepth] = {
                     value: headValue,
@@ -376,17 +384,18 @@ var gen_inter_row_table = function (interRowTable, rowHeader, extra, width, dept
                     isKey: false,
                     style: rh.style
                 };
-                // process cells merged
+                // process cells merged and unmerged-all
             }
             else {
-                keyData.rowSpan = iterCount;
+                var rs = (rh.gridMerge === GridMerge.UnmergedAll) ? 1 : iterCount;
+                keyData.rowSpan = rs;
                 for (var j = 0; j < iterCount; j++) {
-                    interRowTable[innerX + outerX + j + bias][keyDepth] = keyData;
+                    interRowTable[innerX + outerX + j + bias][keyDepth] = __assign({}, keyData);
                     interRowTable[innerX + outerX + j + bias][headerDepth] = {
                         value: headValue,
                         source: source,
                         sourceBlockId: sourceBlockId,
-                        rowSpan: iterCount, colSpan: span,
+                        rowSpan: rs, colSpan: span,
                         isUsed: false,
                         isLeaf: isLeaf,
                         isKey: false,
@@ -503,9 +512,9 @@ var gen_inter_column_table = function (interColumnTable, columnHeader, extra, wi
                     isKey: false,
                     style: ch.style
                 };
-                // process cells unmerged
+                // process cells unmerged-first
             }
-            else if (!ch.gridMerge) {
+            else if (ch.gridMerge === GridMerge.UnmergedFirst) {
                 interColumnTable[keyDepth][innerY + outerY + bias] = keyData;
                 interColumnTable[headerDepth][innerY + outerY + bias] = {
                     value: headValue,
@@ -517,17 +526,18 @@ var gen_inter_column_table = function (interColumnTable, columnHeader, extra, wi
                     isKey: false,
                     style: ch.style
                 };
-                // process cells merged
+                // process cells merged and unmerged-all
             }
             else {
-                keyData.colSpan = iterCount;
+                var cs = (ch.gridMerge === GridMerge.UnmergedAll) ? 1 : iterCount;
+                keyData.colSpan = cs;
                 for (var j = 0; j < iterCount; j++) {
-                    interColumnTable[keyDepth][innerY + outerY + j + bias] = keyData;
+                    interColumnTable[keyDepth][innerY + outerY + j + bias] = __assign({}, keyData);
                     interColumnTable[headerDepth][innerY + outerY + j + bias] = {
                         value: headValue,
                         source: source,
                         sourceBlockId: sourceBlockId,
-                        rowSpan: span, colSpan: iterCount,
+                        rowSpan: span, colSpan: cs,
                         isUsed: false,
                         isLeaf: isLeaf,
                         isKey: false,
@@ -654,7 +664,7 @@ var gen_blank_facet_table = function (rawTable, header, info, depth, outerX, bia
             }
             for (var j = 0; j < iterCount; j++) {
                 // console.log('xxxxxx',  info.oldTable[x+j][y+beforeBias].value, x+j, y+beforeBias);
-                if (rawTable[x + j][y + beforeBias] !== undefined && !hb.entityMerge && hb.gridMerge) {
+                if (rawTable[x + j][y + beforeBias] !== undefined && !hb.entityMerge && hb.gridMerge === GridMerge.Merged) {
                     if (info.tbClass === ROW_TABLE) {
                         // if(beforeBias > 0) rawTable[x+j][y].rowSpan = tmpFacetSpan + blank
                         if (nowBeforeBias > 0)
@@ -999,7 +1009,7 @@ var table_process = function (tbClass, data, _a) {
             if (ct.length === 0)
                 ct.push({ rowSpan: 1, colSpan: 1 });
         }
-        console.log('cell', extra.cellTable);
+        // console.log('cell', extra.cellTable);
         for (var j = 0; j < colSize; j++) {
             processTable[j] = [], tmpLength[j] = 0;
             for (var i = 0; i < colDepth; i++) {
@@ -1514,4 +1524,4 @@ var utils = /*#__PURE__*/Object.freeze({
 
 var index = { utils: utils };
 
-export { index as default };
+module.exports = index;

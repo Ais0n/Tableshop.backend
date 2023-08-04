@@ -2,6 +2,7 @@ import {
   Spec, SourceTable, SingleTable,
   AttrInfoUnit, AttrInfo, DataType,
   Key, KEY_ALPHABETIC, KEY_ROMAN, KEY_NUMERICAL, Pattern, Position,
+  GridMerge,
   BorderStyle, FontStyle, Border,
   HeaderBlock, CellBlock, HeaderChannel, CellChannel, StyleClass,
   FUNC_SUM,
@@ -15,7 +16,7 @@ const header_fill = (attrInfo: AttrInfo, header?: HeaderChannel): void => {
   if(header !== undefined) {
     for(let hb of header) {
       hb.entityMerge = hb.entityMerge ?? false
-      hb.gridMerge = hb.gridMerge ?? true
+      hb.gridMerge = hb.gridMerge ?? GridMerge.Merged
       hb.facet = hb.facet ?? 1
       hb.blankLine = hb.blankLine ?? false 
       if(hb.key && Object.keys(hb.key).length === 0) hb.key = undefined
@@ -302,8 +303,8 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
           isKey: false,
           style: rh.style
         }
-      // process cells unmerged
-      } else if(!rh.gridMerge) {
+      // process cells unmerged-first
+      } else if(rh.gridMerge === GridMerge.UnmergedFirst) {
         interRowTable[innerX+outerX+bias][keyDepth] = keyData
         interRowTable[innerX+outerX+bias][headerDepth] = {
           value: headValue,
@@ -315,16 +316,17 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
           isKey: false,
           style: rh.style
         }
-      // process cells merged
+      // process cells merged and unmerged-all
       } else {
-        keyData.rowSpan = iterCount
+        let rs = (rh.gridMerge===GridMerge.UnmergedAll) ? 1 : iterCount
+        keyData.rowSpan = rs
         for(let j:number=0; j<iterCount; j++) {
-          interRowTable[innerX+outerX+j+bias][keyDepth] = keyData
+          interRowTable[innerX+outerX+j+bias][keyDepth] = {...keyData}
           interRowTable[innerX+outerX+j+bias][headerDepth] = {
             value: headValue,
             source,
             sourceBlockId,
-            rowSpan: iterCount, colSpan: span,
+            rowSpan: rs, colSpan: span,
             isUsed: false,
             isLeaf,
             isKey: false,
@@ -431,8 +433,8 @@ const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: nu
           isKey: false,
           style: ch.style
         }
-      // process cells unmerged
-      } else if(!ch.gridMerge) {
+      // process cells unmerged-first
+      } else if(ch.gridMerge === GridMerge.UnmergedFirst) {
         interColumnTable[keyDepth][innerY+outerY+bias] = keyData
         interColumnTable[headerDepth][innerY+outerY+bias] = {
           value: headValue,
@@ -444,16 +446,17 @@ const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: nu
           isKey: false,
           style: ch.style
         }
-      // process cells merged
+      // process cells merged and unmerged-all
       } else {
-        keyData.colSpan = iterCount
+        let cs = (ch.gridMerge===GridMerge.UnmergedAll) ? 1 : iterCount
+        keyData.colSpan = cs
         for(let j:number=0; j<iterCount; j++) {
-          interColumnTable[keyDepth][innerY+outerY+j+bias] = keyData
+          interColumnTable[keyDepth][innerY+outerY+j+bias] = {...keyData}
           interColumnTable[headerDepth][innerY+outerY+j+bias] = {
             value: headValue,
             source,
             sourceBlockId,
-            rowSpan: span, colSpan: iterCount,
+            rowSpan: span, colSpan: cs,
             isUsed: false,
             isLeaf,
             isKey: false,
@@ -568,7 +571,7 @@ const gen_blank_facet_table = (rawTable, header, info, depth, outerX,
       
       for(let j=0; j<iterCount; j++) {
         // console.log('xxxxxx',  info.oldTable[x+j][y+beforeBias].value, x+j, y+beforeBias);
-        if(rawTable[x+j][y+beforeBias] !== undefined && !hb.entityMerge && hb.gridMerge) {
+        if(rawTable[x+j][y+beforeBias] !== undefined && !hb.entityMerge && hb.gridMerge === GridMerge.Merged) {
           if(info.tbClass === ROW_TABLE) {
             // if(beforeBias > 0) rawTable[x+j][y].rowSpan = tmpFacetSpan + blank
             if(nowBeforeBias > 0) rawTable[x+j][y].rowSpan = tmpFacetSpan + blank
@@ -877,7 +880,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
     for(let ct of extra.cellTable) {
       if(ct.length === 0) ct.push({rowSpan: 1, colSpan: 1})
     }
-    console.log('cell', extra.cellTable);
+    // console.log('cell', extra.cellTable);
     for(let j=0; j<colSize; j++) {
       processTable[j] = [], tmpLength[j] = 0
       for(let i=0; i<colDepth; i++) {
