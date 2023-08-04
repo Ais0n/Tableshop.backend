@@ -71,7 +71,7 @@ let spec = {
   columnHeader: [{
     attrName: "year",
     blockId: "44444",
-    entityMerge: false,
+    entityMerge: true,
     // facet: 3,
     // blankLine: true,
     // key: {

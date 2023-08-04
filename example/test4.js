@@ -101,7 +101,7 @@ let spec = {
     blockId: "11111",
     values: ["Asia"],
     entityMerge: false,
-    // children: []
+    children: []
   }],
   columnHeader: [],
   cell: [],

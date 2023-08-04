@@ -1,5 +1,3 @@
-'use strict';
-
 /******************************************************************************
 Copyright (c) Microsoft Corporation.
 
@@ -24,11 +22,6 @@ var __assign = function() {
         return t;
     };
     return __assign.apply(this, arguments);
-};
-
-typeof SuppressedError === "function" ? SuppressedError : function (error, suppressed, message) {
-    var e = new Error(message);
-    return e.name = "SuppressedError", e.error = error, e.suppressed = suppressed, e;
 };
 
 var SourceTableFormat;
@@ -841,12 +834,10 @@ var table_process = function (tbClass, data, _a) {
         var headSpan = new Array(rowDepth).fill(1);
         calc_head_span(rowHeader, headTmpSpan);
         console.log('head tmp span', headTmpSpan);
-        for (var i = 0; i < headTmpSpan.length; i++) {
-            var hts = headTmpSpan[i];
-            for (var k in hts)
-                if (hts[k] > headSpan[i])
-                    headSpan[i] = hts[k];
-        }
+        // for(let i=0; i<headTmpSpan.length; i++) {
+        //   let hts = headTmpSpan[i]
+        //   for(let k in hts) if(hts[k] > headSpan[i]) headSpan[i] = hts[k]
+        // }
         console.log('head span', headSpan);
         var layersBias = [], totalLayer = 0;
         calc_each_key_layer(rowHeader, layersBias, 0, tbClass);
@@ -875,7 +866,6 @@ var table_process = function (tbClass, data, _a) {
             layersBias: layersBias,
             headSpan: headSpan
         };
-        console.log('@@@', rowSize, rowDepth);
         interTable = Array.from({ length: rowSize }, function () { return new Array(rowDepth)
             .fill(null).map(function (_) { return ({ rowSpan: 1, colSpan: 1 }); }); });
         gen_inter_row_table(interTable, rowHeader, extra, rowSize, 0, 0);
@@ -958,12 +948,10 @@ var table_process = function (tbClass, data, _a) {
         var headSpan = new Array(colDepth).fill(1);
         calc_head_span(columnHeader, headTmpSpan);
         console.log('head tmp span', headTmpSpan);
-        for (var i = 0; i < headTmpSpan.length; i++) {
-            var hts = headTmpSpan[i];
-            for (var k in hts)
-                if (hts[k] > headSpan[i])
-                    headSpan[i] = hts[k];
-        }
+        // for(let i=0; i<headTmpSpan.length; i++) {
+        //   let hts = headTmpSpan[i]
+        //   for(let k in hts) if(hts[k] > headSpan[i]) headSpan[i] = hts[k]
+        // }
         console.log('head span', headSpan);
         var layersBias = [], totalLayer = 0;
         calc_each_key_layer(columnHeader, layersBias, 0, tbClass);
@@ -1077,12 +1065,10 @@ var table_process = function (tbClass, data, _a) {
         var headRowSpan = new Array(rowDepth).fill(1);
         calc_head_span(rowHeader, headRowTmpSpan);
         console.log('head row tmp span', headRowTmpSpan);
-        for (var i = 0; i < headRowTmpSpan.length; i++) {
-            var hts = headRowTmpSpan[i];
-            for (var k in hts)
-                if (hts[k] > headRowSpan[i])
-                    headRowSpan[i] = hts[k];
-        }
+        // for(let i=0; i<headRowTmpSpan.length; i++) {
+        //   let hts = headRowTmpSpan[i]
+        //   for(let k in hts) if(hts[k] > headRowSpan[i]) headRowSpan[i] = hts[k]
+        // }
         console.log('head row span', headRowSpan);
         var layersRowBias = [], totalRowLayer = 0;
         calc_each_key_layer(rowHeader, layersRowBias, 0, ROW_TABLE);
@@ -1118,12 +1104,10 @@ var table_process = function (tbClass, data, _a) {
         var headColSpan = new Array(colDepth).fill(1);
         calc_head_span(columnHeader, headColTmpSpan);
         console.log('head col tmp span', headColTmpSpan);
-        for (var i = 0; i < headColTmpSpan.length; i++) {
-            var hts = headColTmpSpan[i];
-            for (var k in hts)
-                if (hts[k] > headColSpan[i])
-                    headColSpan[i] = hts[k];
-        }
+        // for(let i=0; i<headColTmpSpan.length; i++) {
+        //   let hts = headColTmpSpan[i]
+        //   for(let k in hts) if(hts[k] > headColSpan[i]) headColSpan[i] = hts[k]
+        // }
         console.log('head col span', headColSpan);
         var layersColBias = [], totalColLayer = 0;
         calc_each_key_layer(columnHeader, layersColBias, 0, COLUM_TABLE);
@@ -1518,4 +1502,4 @@ var utils = /*#__PURE__*/Object.freeze({
 
 var index = { utils: utils };
 
-module.exports = index;
+export { index as default };

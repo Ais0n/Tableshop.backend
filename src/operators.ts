@@ -729,10 +729,10 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
     let headSpan = new Array(rowDepth).fill(1)
     calc_head_span(rowHeader, headTmpSpan)
     console.log('head tmp span', headTmpSpan);
-    for(let i=0; i<headTmpSpan.length; i++) {
-      let hts = headTmpSpan[i]
-      for(let k in hts) if(hts[k] > headSpan[i]) headSpan[i] = hts[k]
-    }
+    // for(let i=0; i<headTmpSpan.length; i++) {
+    //   let hts = headTmpSpan[i]
+    //   for(let k in hts) if(hts[k] > headSpan[i]) headSpan[i] = hts[k]
+    // }
     console.log('head span', headSpan);
     let layersBias = [], totalLayer = 0
     calc_each_key_layer(rowHeader, layersBias, 0, tbClass)
@@ -756,7 +756,6 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
       layersBias,
       headSpan
     }
-    console.log('@@@', rowSize, rowDepth);
     interTable = Array.from({length: rowSize}, () => new Array(rowDepth)
                   .fill(null).map(_ => ({rowSpan: 1, colSpan: 1})))
     gen_inter_row_table(interTable, rowHeader, extra, rowSize, 0, 0)
@@ -836,10 +835,10 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
     let headSpan = new Array(colDepth).fill(1)
     calc_head_span(columnHeader, headTmpSpan)
     console.log('head tmp span', headTmpSpan);
-    for(let i=0; i<headTmpSpan.length; i++) {
-      let hts = headTmpSpan[i]
-      for(let k in hts) if(hts[k] > headSpan[i]) headSpan[i] = hts[k]
-    }
+    // for(let i=0; i<headTmpSpan.length; i++) {
+    //   let hts = headTmpSpan[i]
+    //   for(let k in hts) if(hts[k] > headSpan[i]) headSpan[i] = hts[k]
+    // }
     console.log('head span', headSpan);
     let layersBias = [], totalLayer = 0
     calc_each_key_layer(columnHeader, layersBias, 0, tbClass)
@@ -945,10 +944,10 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
     let headRowSpan = new Array(rowDepth).fill(1)
     calc_head_span(rowHeader, headRowTmpSpan)
     console.log('head row tmp span', headRowTmpSpan);
-    for(let i=0; i<headRowTmpSpan.length; i++) {
-      let hts = headRowTmpSpan[i]
-      for(let k in hts) if(hts[k] > headRowSpan[i]) headRowSpan[i] = hts[k]
-    }
+    // for(let i=0; i<headRowTmpSpan.length; i++) {
+    //   let hts = headRowTmpSpan[i]
+    //   for(let k in hts) if(hts[k] > headRowSpan[i]) headRowSpan[i] = hts[k]
+    // }
     console.log('head row span', headRowSpan);
     let layersRowBias = [], totalRowLayer = 0
     calc_each_key_layer(rowHeader, layersRowBias, 0, ROW_TABLE)
@@ -980,10 +979,10 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
     let headColSpan = new Array(colDepth).fill(1)
     calc_head_span(columnHeader, headColTmpSpan)
     console.log('head col tmp span', headColTmpSpan);
-    for(let i=0; i<headColTmpSpan.length; i++) {
-      let hts = headColTmpSpan[i]
-      for(let k in hts) if(hts[k] > headColSpan[i]) headColSpan[i] = hts[k]
-    }
+    // for(let i=0; i<headColTmpSpan.length; i++) {
+    //   let hts = headColTmpSpan[i]
+    //   for(let k in hts) if(hts[k] > headColSpan[i]) headColSpan[i] = hts[k]
+    // }
     console.log('head col span', headColSpan);
     let layersColBias = [], totalColLayer = 0
     calc_each_key_layer(columnHeader, layersColBias, 0, COLUM_TABLE)
