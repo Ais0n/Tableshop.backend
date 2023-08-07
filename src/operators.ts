@@ -186,6 +186,7 @@ const get_header_is_facet = (channel?: HeaderChannel) => {
 }
 
 const get_cell_val = (preVal, data, key) => {
+  let res = new Array()
   for(let d of data) {
     let flag = true
     for(let k in preVal) {
@@ -194,9 +195,11 @@ const get_cell_val = (preVal, data, key) => {
         break
       }
     }
-    if(flag) return d[key]
+    // if(flag) return d[key]
+    if(flag) res.push(d[key])
   }
-  return undefined
+  if(res.length === 0) return undefined
+  else return res.join(',')
 }
 
 const get_key = (key: Key, level: number, preKey: string) => {
@@ -256,7 +259,7 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
   leftBias = lb, rightBias = rb
   let currentKeyLayer = leftBias + rightBias
   for(let rh of rowHeader) {
-    let isLeaf = rh.children ? false : true
+    let isLeaf = (rh.children && rh.children.length) ? false : true
     let sourceBlockId = rh.blockId, source = rh.attrName ?? rh.function
     let headerDepth = depth + keyBias + leftBias, keyDepth = headerDepth
     let isKeyEmbedded = false
@@ -386,7 +389,7 @@ const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: nu
   topBias = tb, bottomBias = bb
   let currentKeyLayer = topBias + bottomBias
   for(let ch of columnHeader) {
-    let isLeaf = ch.children ? false : true
+    let isLeaf = (ch.children && ch.children.length) ? false : true
     let sourceBlockId = ch.blockId, source = ch.attrName ?? ch.function
     let headerDepth = depth + keyBias + topBias, keyDepth = headerDepth
     let isKeyEmbedded = false
@@ -764,10 +767,10 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
     gen_inter_row_table(interTable, rowHeader, extra, rowSize, 0, 0)
     // console.log('@@@', interTable);
     let maxLength = 0, tmpLength: number[] = []
-    // when cell is empty, fill one row/col(default)
-    for(let ct of extra.cellTable) {
-      if(ct.length === 0) ct.push({rowSpan: 1, colSpan: 1})
-    }
+    // // when cell is empty, fill one row/col(default)
+    // for(let ct of extra.cellTable) {
+    //   if(ct.length === 0) ct.push({rowSpan: 1, colSpan: 1})
+    // }
     // console.log('cell', extra.cellTable);
     for(let i=0; i<rowSize; i++) {
       processTable[i] = [], tmpLength[i] = 0
@@ -876,10 +879,10 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
     gen_inter_column_table(interTable, columnHeader, extra, colSize, 0, 0)
     // console.log('@@', interTable);
     let maxLength = 0, tmpLength: number[] = []
-    // when cell is empty, fill one row/col(default)
-    for(let ct of extra.cellTable) {
-      if(ct.length === 0) ct.push({rowSpan: 1, colSpan: 1})
-    }
+    // // when cell is empty, fill one row/col(default)
+    // for(let ct of extra.cellTable) {
+    //   if(ct.length === 0) ct.push({rowSpan: 1, colSpan: 1})
+    // }
     // console.log('cell', extra.cellTable);
     for(let j=0; j<colSize; j++) {
       processTable[j] = [], tmpLength[j] = 0
@@ -1027,8 +1030,8 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
     gen_inter_row_table(interTable, rowHeader, rowExtra, rowSize, 0, 0, colDepth)
     gen_inter_column_table(interTable, columnHeader, colExtra, colSize, 0, 0, rowDepth)
 
-    // console.log('valIdx', rowExtra.valIdx)
-    // console.log('valIdx', colExtra.valIdx);
+    // console.log('row valIdx', rowExtra.valIdx)
+    // console.log('col valIdx', colExtra.valIdx);
     gen_inter_cross_table(interTable, rowExtra, colExtra, cell)
     // console.log('@', interTable)
 

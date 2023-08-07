@@ -71,7 +71,7 @@ let spec = {
   ],
   "cell": [{
     attrName: "sales",
-    // rowParentId: "22222",
+    rowParentId: "11111",
     colParentId: "60e5f0d4-5668-4b96-a145-1bc86efb2b32",
     blockId: "66666",
   }],
@@ -238,4 +238,117 @@ let spec2 = {
   ]
 }
 
-let res = tableShop.utils.transform({ data, spec: spec })
+let spec3 = {
+  "type": "block",
+  "rowHeader": [
+      {
+          "attrName": "continent",
+          "blockId": "e112b87d-8aaa-4071-88e4-45875e33ee4b",
+          "channel": "row",
+          "entityMerge": false,
+          "gridMerge": "merged",
+          "facet": 1,
+          "blankLine": false,
+          "style": "TODO",
+          "values": [
+              "Asia",
+              "Europe"
+          ]
+      }
+  ],
+  "columnHeader": [
+      {
+          "attrName": "country",
+          "blockId": "0e767b6d-6933-4ffa-a01b-a6f96ac0e172",
+          "children": [],
+          "channel": "column",
+          "entityMerge": false,
+          "gridMerge": "merged",
+          "facet": 1,
+          "blankLine": false,
+          "style": "TODO",
+          "values": [
+              "CHN",
+              "JPN",
+              "GBR",
+              "FRA"
+          ]
+      }
+  ],
+  "cell": [
+      {
+          "attrName": "sales",
+          "blockId": "178557b9-339b-41e7-af79-bca0a76d1e33",
+          "rowParentId": "e112b87d-8aaa-4071-88e4-45875e33ee4b",
+          "colParentId": "0e767b6d-6933-4ffa-a01b-a6f96ac0e172",
+          "channel": "cell"
+      }
+  ],
+  "attrInfo": [
+      {
+          "name": "continent",
+          "values": [
+              "Asia",
+              "Europe"
+          ],
+          "dataType": "categorical"
+      },
+      {
+          "name": "country",
+          "values": [
+              "CHN",
+              "JPN",
+              "GBR",
+              "FRA"
+          ],
+          "dataType": "categorical"
+      },
+      {
+          "name": "year",
+          "values": [
+              "2019",
+              "2020",
+              "2021"
+          ],
+          "dataType": "categorical"
+      },
+      {
+          "name": "season",
+          "values": [
+              "spr",
+              "aut"
+          ],
+          "dataType": "categorical"
+      },
+      {
+          "name": "sales",
+          "values": [
+              105,
+              110,
+              120,
+              125,
+              131,
+              150,
+              60,
+              80,
+              82,
+              92,
+              95,
+              104,
+              112,
+              136,
+              59,
+              63,
+              72,
+              79,
+              86,
+              90
+          ],
+          "dataType": "numerical"
+      }
+  ],
+  "left": 309,
+  "top": 233
+}
+
+let res = tableShop.utils.transform({ data, spec: spec3 })

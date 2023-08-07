@@ -241,6 +241,7 @@ var get_header_is_facet = function (channel) {
     return false;
 };
 var get_cell_val = function (preVal, data, key) {
+    var res = new Array();
     for (var _i = 0, data_1 = data; _i < data_1.length; _i++) {
         var d = data_1[_i];
         var flag = true;
@@ -250,10 +251,14 @@ var get_cell_val = function (preVal, data, key) {
                 break;
             }
         }
+        // if(flag) return d[key]
         if (flag)
-            return d[key];
+            res.push(d[key]);
     }
-    return undefined;
+    if (res.length === 0)
+        return undefined;
+    else
+        return res.join(',');
 };
 var get_key = function (key, level, preKey) {
     if (!key)
@@ -322,7 +327,7 @@ var gen_inter_row_table = function (interRowTable, rowHeader, extra, width, dept
     var currentKeyLayer = leftBias + rightBias;
     for (var _i = 0, rowHeader_1 = rowHeader; _i < rowHeader_1.length; _i++) {
         var rh = rowHeader_1[_i];
-        var isLeaf = rh.children ? false : true;
+        var isLeaf = (rh.children && rh.children.length) ? false : true;
         var sourceBlockId = rh.blockId, source = (_a = rh.attrName) !== null && _a !== void 0 ? _a : rh.function;
         var headerDepth = depth + keyBias + leftBias, keyDepth = headerDepth;
         var isKeyEmbedded = false;
@@ -464,7 +469,7 @@ var gen_inter_column_table = function (interColumnTable, columnHeader, extra, wi
     var currentKeyLayer = topBias + bottomBias;
     for (var _i = 0, columnHeader_1 = columnHeader; _i < columnHeader_1.length; _i++) {
         var ch = columnHeader_1[_i];
-        var isLeaf = ch.children ? false : true;
+        var isLeaf = (ch.children && ch.children.length) ? false : true;
         var sourceBlockId = ch.blockId, source = (_a = ch.attrName) !== null && _a !== void 0 ? _a : ch.function;
         var headerDepth = depth + keyBias + topBias, keyDepth = headerDepth;
         var isKeyEmbedded = false;
@@ -881,12 +886,10 @@ var table_process = function (tbClass, data, _a) {
         gen_inter_row_table(interTable, rowHeader, extra, rowSize, 0, 0);
         // console.log('@@@', interTable);
         var maxLength = 0, tmpLength = [];
-        // when cell is empty, fill one row/col(default)
-        for (var _b = 0, _c = extra.cellTable; _b < _c.length; _b++) {
-            var ct = _c[_b];
-            if (ct.length === 0)
-                ct.push({ rowSpan: 1, colSpan: 1 });
-        }
+        // // when cell is empty, fill one row/col(default)
+        // for(let ct of extra.cellTable) {
+        //   if(ct.length === 0) ct.push({rowSpan: 1, colSpan: 1})
+        // }
         // console.log('cell', extra.cellTable);
         for (var i = 0; i < rowSize; i++) {
             processTable[i] = [], tmpLength[i] = 0;
@@ -920,8 +923,8 @@ var table_process = function (tbClass, data, _a) {
                     interTable[i + k][j].isUsed = true;
                 }
             }
-            for (var _d = 0, _e = extra.cellTable[i]; _d < _e.length; _d++) {
-                var c = _e[_d];
+            for (var _b = 0, _c = extra.cellTable[i]; _b < _c.length; _b++) {
+                var c = _c[_b];
                 tmpLength[i]++;
                 processTable[i].push({
                     value: c.value,
@@ -971,8 +974,8 @@ var table_process = function (tbClass, data, _a) {
         console.log('head span', headSpan);
         var layersBias = [], totalLayer = 0;
         calc_each_key_layer(columnHeader, layersBias, 0, tbClass);
-        for (var _f = 0, layersBias_2 = layersBias; _f < layersBias_2.length; _f++) {
-            var lb = layersBias_2[_f];
+        for (var _d = 0, layersBias_2 = layersBias; _d < layersBias_2.length; _d++) {
+            var lb = layersBias_2[_d];
             totalLayer += lb[0] + lb[1];
         }
         colDepth += totalLayer;
@@ -1003,12 +1006,10 @@ var table_process = function (tbClass, data, _a) {
         gen_inter_column_table(interTable, columnHeader, extra, colSize, 0, 0);
         // console.log('@@', interTable);
         var maxLength = 0, tmpLength = [];
-        // when cell is empty, fill one row/col(default)
-        for (var _g = 0, _h = extra.cellTable; _g < _h.length; _g++) {
-            var ct = _h[_g];
-            if (ct.length === 0)
-                ct.push({ rowSpan: 1, colSpan: 1 });
-        }
+        // // when cell is empty, fill one row/col(default)
+        // for(let ct of extra.cellTable) {
+        //   if(ct.length === 0) ct.push({rowSpan: 1, colSpan: 1})
+        // }
         // console.log('cell', extra.cellTable);
         for (var j = 0; j < colSize; j++) {
             processTable[j] = [], tmpLength[j] = 0;
@@ -1042,8 +1043,8 @@ var table_process = function (tbClass, data, _a) {
                     interTable[i][j + k].isUsed = true;
                 }
             }
-            for (var _j = 0, _k = extra.cellTable[j]; _j < _k.length; _j++) {
-                var c = _k[_j];
+            for (var _e = 0, _f = extra.cellTable[j]; _e < _f.length; _e++) {
+                var c = _f[_e];
                 tmpLength[j]++;
                 processTable[j].push({
                     value: c.value,
@@ -1094,8 +1095,8 @@ var table_process = function (tbClass, data, _a) {
         console.log('head row span', headRowSpan);
         var layersRowBias = [], totalRowLayer = 0;
         calc_each_key_layer(rowHeader, layersRowBias, 0, ROW_TABLE);
-        for (var _l = 0, layersRowBias_1 = layersRowBias; _l < layersRowBias_1.length; _l++) {
-            var lb = layersRowBias_1[_l];
+        for (var _g = 0, layersRowBias_1 = layersRowBias; _g < layersRowBias_1.length; _g++) {
+            var lb = layersRowBias_1[_g];
             totalRowLayer += lb[0] + lb[1];
         }
         rowDepth += totalRowLayer;
@@ -1133,8 +1134,8 @@ var table_process = function (tbClass, data, _a) {
         console.log('head col span', headColSpan);
         var layersColBias = [], totalColLayer = 0;
         calc_each_key_layer(columnHeader, layersColBias, 0, COLUM_TABLE);
-        for (var _m = 0, layersColBias_1 = layersColBias; _m < layersColBias_1.length; _m++) {
-            var lb = layersColBias_1[_m];
+        for (var _h = 0, layersColBias_1 = layersColBias; _h < layersColBias_1.length; _h++) {
+            var lb = layersColBias_1[_h];
             totalColLayer += lb[0] + lb[1];
         }
         colDepth += totalColLayer;
@@ -1166,8 +1167,8 @@ var table_process = function (tbClass, data, _a) {
             .fill(null).map(function (_) { return ({ rowSpan: 1, colSpan: 1 }); }); });
         gen_inter_row_table(interTable, rowHeader, rowExtra, rowSize, 0, 0, colDepth);
         gen_inter_column_table(interTable, columnHeader, colExtra, colSize, 0, 0, rowDepth);
-        // console.log('valIdx', rowExtra.valIdx)
-        // console.log('valIdx', colExtra.valIdx);
+        // console.log('row valIdx', rowExtra.valIdx)
+        // console.log('col valIdx', colExtra.valIdx);
         gen_inter_cross_table(interTable, rowExtra, colExtra, cell);
         // console.log('@', interTable)
         var rowPart = new Array(), colPart = new Array();
