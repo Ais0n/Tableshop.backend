@@ -30,7 +30,23 @@ let data = {
 }
 
 let spec = {
-  "rowHeader": [],
+  "rowHeader": [
+    {
+      "attrName": "country",
+          "blockId": "11111",
+          "left": 64,
+          "top": 44,
+          "width": 140,
+          "height": 60,
+          "channel": "column",
+          "entityMerge": false,
+          "gridMerge": true,
+          "facet": 1,
+          "blankLine": false,
+          "style": "TODO",
+          "unfolded": false,
+    }
+  ],
   "columnHeader": [
       {
           "attrName": "year",
