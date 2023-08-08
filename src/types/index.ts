@@ -3,7 +3,7 @@ import {
   AttrInfoUnit, AttrInfo, DataType,
   Key, KEY_ALPHABETIC, KEY_ROMAN, KEY_NUMERICAL, Pattern, Position,
   GridMerge,
-  BorderStyle, FontStyle, Border,
+  BorderPosition, Border, FontUnderscore, FontWeight, Font, Background,
   HeaderBlock, CellBlock, HeaderChannel, CellChannel, StyleClass,
   FUNC_SUM
 } from "./data_source"
@@ -19,7 +19,7 @@ export {
   AttrInfoUnit, AttrInfo, DataType,
   Key, KEY_ALPHABETIC, KEY_ROMAN, KEY_NUMERICAL, Pattern, Position, 
   GridMerge,
-  BorderStyle, FontStyle, Border,
+  BorderPosition, Border, FontUnderscore, FontWeight, Font, Background,
   HeaderBlock, CellBlock, HeaderChannel, CellChannel, StyleClass,
   FUNC_SUM,
   CROSS_TABLE, ROW_TABLE, COLUM_TABLE, 

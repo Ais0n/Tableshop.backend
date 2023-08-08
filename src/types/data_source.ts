@@ -54,6 +54,26 @@ export enum GridMerge {
   UnmergedAll = "unmerged-all"
 }
 
+export enum BorderPosition {
+  ALL = "All",
+  TOP = "Top",
+  BOTTOM = "Bottom",
+  LEFT = "Left",
+  RIGHT = "Right"
+}
+
+export enum FontUnderscore {
+  None = 0,
+  Single = 1,
+  Double = 2
+}
+
+export enum FontWeight {
+  REGULAR = "Regular",
+  BOLD = "Bold",
+  SEMIBOLD = "Semi Bold"
+}
+
 type Color = string
 
 export interface Key {
@@ -62,21 +82,21 @@ export interface Key {
   isInherited: boolean;
 }
 
-export interface BorderStyle {
-  color: Color;
-  isDouble: boolean;
-}
-
-export interface FontStyle {
-  fontSize: string;
-  fontWeight: string;
-}
-
 export interface Border {
-  border_top: null | BorderStyle;
-  border_bottom: null | BorderStyle;
-  border_left: null | BorderStyle;
-  border_right: null | BorderStyle;
+  color: Color;
+  width: number,
+  position: BorderPosition
+}
+
+export interface Background {
+  color: Color
+}
+
+export interface Font {
+  size: number;
+  weight: FontWeight;
+  color: Color;
+  underscore?: FontUnderscore;
 }
 
 export interface HeaderBlock {
@@ -90,7 +110,7 @@ export interface HeaderBlock {
   // expand?: boolean;
   facet?: number;
   blankLine?: boolean;
-  style?: string;
+  style?: StyleClass;
   values?: string[] | number[];
   children?: HeaderBlock[];
 }
@@ -99,25 +119,27 @@ export interface CellBlock {
   attrName: string;
   rowParentId?: string;
   columnParentId?: string;
-  style?: string; 
+  className?: string;
+  style?: StyleClass; 
 }
 
 export type HeaderChannel = HeaderBlock[]
 export type CellChannel = CellBlock[]
 
 export interface StyleClass {
-  border: Border;
-  bgColor: Color;
-  indent: string;
-  font: FontStyle;
-  textAlign: string;
+  border?: Border;
+  background?: Background;
+  indent?: number;
+  font?: Font;
 }
 
 export interface SingleTable {
   rowHeader?: HeaderChannel;
   columnHeader?: HeaderChannel;
   cell: CellChannel;
-  styles: StyleClass[];
+  styles: {
+    [key: string]: StyleClass
+  };
   attrInfo: AttrInfo; 
 }
 

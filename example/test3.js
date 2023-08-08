@@ -1,4 +1,5 @@
 const tableShop = require("../dist/tableShop");
+const util = require('util');
 let data = {
   name: "sales",
   values: [
@@ -351,4 +352,96 @@ let spec3 = {
   "top": 233
 }
 
-let res = tableShop.utils.transform({ data, spec: spec3 })
+let spec4 = {
+  rowHeader: [{
+    attrName: "continent",
+    blockId: "11111",
+    values: ["Asia"],
+    className: "class1",
+    style: {border: {
+      color: "#xxxxxx",
+      position: "Top"
+    }},
+    children: [{
+      attrName: "country",
+      blockId: "22222",
+      values: ["CHN", "JPN"],
+      style: {border: {
+        color: "#xxxxxx",
+        position: "Left"
+      }},
+    }]
+  }],
+  columnHeader: [{
+    attrName: "year",
+    blockId: "44444",
+    style: {border: {
+      color: "#xxxxxx",
+      position: "Bottom"
+    }},
+    children: [{
+      attrName: "season",
+      blockId: "55555",
+      entityMerge: false,
+      className: "class1",
+      style: {
+        font: {
+          underscore: 1,
+          weight: "Bold"
+        },
+      }
+    }],
+  }],
+  cell: [{
+    attrName: "sales",
+    rowParentId: "22222",
+    colParentId: "55555",
+    blockId: "66666",
+    className: "class1",
+    style: {border: {
+      color: "#xxxxxx",
+      position: "Right"
+    }},
+  }
+  ],
+  attrInfo: [{
+    name: "continent",
+    dataType: "categorical",
+    values: ["Asia", "Europe"],
+  }, {
+    name: "country",
+    dataType: "categorical",
+    values: ["CHN", "JPN", "GBR", "FRA"]
+  }, {
+    name: "year",
+    dataType: "categorical",
+    values: ["2019", "2020", "2021"]
+  }, {
+    name: "season",
+    dataType: "categorical",
+    values: ["spr", "aut"],
+  }, {
+    name: "sales",
+    dataType: "numerical",
+    values: [105, 110, 120, 125, 131, 150, 60, 80, 82, 92, 95, 110, 80, 92, 95, 104, 112, 136, 59, 63, 72, 79, 86, 90],
+  },],
+  styles: {class1: {
+    border: {
+      color: "#ffffff",
+      width: 1,
+      position: "All",
+    },
+    font: {
+      size: 14,
+      weight: "Regular",
+      color: "#000000",
+    },
+    background: {
+      color: "#123456",
+    },
+    indent: 5,
+  }}
+}
+
+let res = tableShop.utils.transform({ data, spec: spec4 })
+console.log('@@@@@', util.inspect(res, {showHidden: false, depth: null, colors: true}));

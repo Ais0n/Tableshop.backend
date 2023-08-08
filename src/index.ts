@@ -1,7 +1,7 @@
 import {
   Spec, SourceTable, SingleTable,
   AttrInfoUnit, AttrInfo,
-  Key, BorderStyle, FontStyle, Border,
+  Key,
   HeaderBlock, CellBlock, HeaderChannel, CellChannel, StyleClass
 } from "./types";
 import * as utils from "./operators"

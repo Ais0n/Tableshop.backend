@@ -3,16 +3,17 @@ import {
   AttrInfoUnit, AttrInfo, DataType,
   Key, KEY_ALPHABETIC, KEY_ROMAN, KEY_NUMERICAL, Pattern, Position,
   GridMerge,
-  BorderStyle, FontStyle, Border,
+  BorderPosition, Border, FontUnderscore, FontWeight, Font, Background,
   HeaderBlock, CellBlock, HeaderChannel, CellChannel, StyleClass,
   FUNC_SUM,
   CROSS_TABLE, ROW_TABLE, COLUM_TABLE, 
   interCell
 } from "./types";
+import { deepAssign } from "./utils";
 
 
-
-const header_fill = (attrInfo: AttrInfo, header?: HeaderChannel): void => {
+// init header info
+const header_fill = (attrInfo: AttrInfo, styles: StyleClass, header?: HeaderChannel): void => {
   if(header !== undefined) {
     for(let hb of header) {
       hb.entityMerge = hb.entityMerge ?? false
@@ -20,7 +21,9 @@ const header_fill = (attrInfo: AttrInfo, header?: HeaderChannel): void => {
       hb.facet = hb.facet ?? 1
       hb.blankLine = hb.blankLine ?? false 
       if(hb.key && Object.keys(hb.key).length === 0) hb.key = undefined
-      hb.style = "TODO"
+      let headerStyle = hb.className ? deepAssign({}, styles[hb.className]) : {}
+      if(!hb.style || Object.keys(hb.style).length===0) hb.style = {}
+      hb.style = deepAssign(headerStyle, hb.style)
       if(hb.function !== undefined) {
         if(hb.function === FUNC_SUM) hb.values = [FUNC_SUM]
         else hb.values = ["Function(Unknown)"]
@@ -31,7 +34,7 @@ const header_fill = (attrInfo: AttrInfo, header?: HeaderChannel): void => {
       })!
       hb.values = hb.values ?? attr.values
       // if(hb.children && hb.children.length===0) hb.children = undefined
-      header_fill(attrInfo, hb.children)
+      header_fill(attrInfo, styles, hb.children)
     }
   }
 }
@@ -48,18 +51,68 @@ const spec_init = (task: Spec): void => {
             (columnHeader===undefined || columnHeader.length===0)) {
     throw new Error("RowHeader and ColumnHeader can not be both undefined!")
   } else {
+    if(!styles || Object.keys(styles).length===0) spec.styles = {}
     for(let header of [rowHeader, columnHeader]) {
-      header_fill(attrInfo, header)
+      header_fill(attrInfo, styles, header)
     }
     for(let c of cell) {
-      c.style = "TODO2"
-    }
-    if(styles !== undefined) {
-      for(let s of styles) {
-        s.indent = '\t'
-      }
+      let cellStyle = c.className ? deepAssign({}, styles[c.className]) : {}
+      if(!c.style || Object.keys(c.style).length===0) c.style = {}
+      c.style = deepAssign(cellStyle, c.style)
     }
   }
+}
+
+// process style to css format
+const style_process = (style: StyleClass) => {
+  let output = {}
+  let { border, font, background, indent} = style
+  // Border
+  if(border) {
+    let positionKey = "", bdFormat = new Array()
+    let bdWidth = border.width, bdStyle = "solid", bdColor = border.color
+    switch (border.position) {
+      case BorderPosition.TOP:
+        positionKey = "border-top"
+        break;
+      case BorderPosition.BOTTOM:
+        positionKey = "border-bottom"
+        break;
+      case BorderPosition.LEFT:
+        positionKey = "border-left"
+        break;
+      case BorderPosition.RIGHT:
+        positionKey = "border-right"
+        break;  
+      default:
+        positionKey = "border"
+        break;
+    }
+    if(bdWidth) bdFormat.push(bdWidth + "px")
+    if(bdStyle) bdFormat.push(bdStyle)
+    if(bdColor) bdFormat.push(bdColor)
+    output[positionKey] = bdFormat.join(" ")
+  }
+  // Font
+  if(font) {
+    if(font.color) output['color'] = font.color
+    if(font.size) output['font-size'] = font.size + "px"
+    if(font.weight) {
+      if(font.weight === FontWeight.REGULAR) output['font-family'] = "Inter-Regular-9"
+      else if(font.weight === FontWeight.BOLD) output['font-family'] = "Inter-Bold-4"
+      else if(font.weight === FontWeight.SEMIBOLD) output['font-family'] = "Inter-Medium-8"
+    }
+    if(font.underscore === FontUnderscore.Single) output['text-decoration'] = "underline"
+    else if(font.underscore === FontUnderscore.Double) output['text-decoration'] = "underline double"
+  }
+  // Background
+  if(background) {
+    if(background.color) output['background-color'] = background.color
+  }
+  // Indent
+  if(indent) output['padding-left'] = indent + "px"
+
+  return output
 }
 
 // compute dimension(depth) of rowHeader/columnHeader
@@ -262,6 +315,7 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
     let isLeaf = (rh.children && rh.children.length) ? false : true
     let sourceBlockId = rh.blockId, source = rh.attrName ?? rh.function
     let headerDepth = depth + keyBias + leftBias, keyDepth = headerDepth
+    let headerStyle = style_process(rh.style)
     let isKeyEmbedded = false
     if(rh.key && rh.key.position === Position.LEFT) keyDepth = headerDepth - 1
     if(rh.key && rh.key.position === Position.RIGHT) keyDepth = headerDepth + 1
@@ -279,7 +333,7 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
         isUsed: false,
         isLeaf,
         isKey: true,
-        style: 'KEY STYLE'
+        style: headerStyle
       }
       extra.preVal[source] = rh.values[i]
       if(rh.entityMerge) {
@@ -304,7 +358,7 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
           isUsed: false, 
           isLeaf,
           isKey: false,
-          style: rh.style
+          style: headerStyle
         }
       // process cells unmerged-first
       } else if(rh.gridMerge === GridMerge.UnmergedFirst) {
@@ -317,7 +371,7 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
           isUsed: false,
           isLeaf,
           isKey: false,
-          style: rh.style
+          style: headerStyle
         }
       // process cells merged and unmerged-all
       } else {
@@ -333,7 +387,7 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
             isUsed: false,
             isLeaf,
             isKey: false,
-            style: rh.style
+            style: headerStyle
           }
         }
       }
@@ -341,6 +395,7 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
       if(!extra.notSearchCell && isLeaf) {
         for(let c of extra.cell) {
           if(c.rowParentId === rh.blockId) {
+            let cellStyle = style_process(c.style)
             // process function cell
             if(rh.function) {
               if(!agg_type_check(extra.attrInfo, c.attrName)) throw new Error("Function can only be used to numerical>")
@@ -349,7 +404,7 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
                 value: aggregate_use(extra.preVal, extra.data, c.attrName, FUNC_SUM),
                 source: c.attrName,
                 sourceBlockId: c.blockId,
-                style: c.style
+                style: cellStyle
               }) 
             // Process attr cell
             } else {
@@ -357,7 +412,7 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
                 value: get_cell_val(extra.preVal, extra.data, c.attrName),
                 source: c.attrName,
                 sourceBlockId: c.blockId,
-                style: c.style
+                style: cellStyle
               }) 
             }
           }
@@ -392,6 +447,7 @@ const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: nu
     let isLeaf = (ch.children && ch.children.length) ? false : true
     let sourceBlockId = ch.blockId, source = ch.attrName ?? ch.function
     let headerDepth = depth + keyBias + topBias, keyDepth = headerDepth
+    let headerStyle = style_process(ch.style)
     let isKeyEmbedded = false
     if(ch.key && ch.key.position === Position.TOP) keyDepth = headerDepth - 1
     if(ch.key && ch.key.position === Position.BOTTOM) keyDepth = headerDepth + 1
@@ -409,7 +465,7 @@ const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: nu
         isUsed: false,
         isLeaf,
         isKey: true,
-        style: 'KEY STYLE'
+        style: headerStyle
       }
       extra.preVal[source] = ch.values[i]
       if(ch.entityMerge) {
@@ -434,7 +490,7 @@ const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: nu
           isUsed: false, 
           isLeaf,
           isKey: false,
-          style: ch.style
+          style: headerStyle
         }
       // process cells unmerged-first
       } else if(ch.gridMerge === GridMerge.UnmergedFirst) {
@@ -447,7 +503,7 @@ const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: nu
           isUsed: false,
           isLeaf,
           isKey: false,
-          style: ch.style
+          style: headerStyle
         }
       // process cells merged and unmerged-all
       } else {
@@ -463,7 +519,7 @@ const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: nu
             isUsed: false,
             isLeaf,
             isKey: false,
-            style: ch.style
+            style: headerStyle
           }
         }
       }
@@ -471,6 +527,7 @@ const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: nu
       if(!extra.notSearchCell && isLeaf) {
         for(let c of extra.cell) {
           if(c.colParentId === ch.blockId) {
+            let cellStyle = style_process(c.style)
             // process function cell
             if(ch.function) {
               if(!agg_type_check(extra.attrInfo, c.attrName)) throw new Error("Function can only be used to numerical>")
@@ -479,7 +536,7 @@ const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: nu
                 value: aggregate_use(extra.preVal, extra.data, c.attrName, FUNC_SUM),
                 source: c.attrName,
                 sourceBlockId: c.blockId,
-                style: c.style
+                style: cellStyle
               }) 
             // Process attr cell
             } else {
@@ -487,7 +544,7 @@ const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: nu
                 value: get_cell_val(extra.preVal, extra.data, c.attrName),
                 source: c.attrName,
                 sourceBlockId: c.blockId,
-                style: c.style
+                style: cellStyle
               }) 
             }
           }
@@ -516,6 +573,7 @@ const gen_inter_cross_table = (interCrossTable, rowExtra, colExtra, cell) => {
     for(let j=0; j<colValIdx.length; j++) {
       for(let c of cell) {
         if(c.rowParentId === rowValIdx[i].blockId && c.colParentId === colValIdx[j].blockId) {
+          let cellStyle = style_process(c.style)
           let x = rowValIdx[i].idx, y = colValIdx[j].idx
           if(rowValIdx[i].isAgg || colValIdx[j].isAgg) {
             if(!agg_type_check(rowExtra.attrInfo, c.attrName)) throw new Error("Function can only be used to numerical>")
@@ -525,7 +583,7 @@ const gen_inter_cross_table = (interCrossTable, rowExtra, colExtra, cell) => {
               // source: c.attrName,
               sourceBlockId: c.blockId,
               rowSpan: 1, colSpan: 1,
-              style: c.style
+              style: cellStyle
             }
           } else {
             interCrossTable[x][y] = {
@@ -533,7 +591,7 @@ const gen_inter_cross_table = (interCrossTable, rowExtra, colExtra, cell) => {
               // source: c.attrName,
               sourceBlockId: c.blockId,
               rowSpan: 1, colSpan: 1,
-              style: c.style
+              style: cellStyle
             }
           }
         }
