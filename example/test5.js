@@ -289,9 +289,9 @@ let spec3 = {
     attrName: "continent",
     blockId: "44444",
     entityMerge: false,
-    gridMerge: "unmerged-first", //"merged" | "unmerged-first" | "unmerged-all"
+    gridMerge: "merged", //"merged" | "unmerged-first" | "unmerged-all"
     // facet: 2,
-    // blankLine: true,
+    blankLine: true,
     // key: {
     //   position: "left",
     //   // position: "embedded",
@@ -304,6 +304,11 @@ let spec3 = {
       entityMerge: false,
       blankLine: true,
       // facet: 2,
+      // children: [{
+      //   attrName: "season",
+      //   blockId: "77777",
+      //   entityMerge: false,
+      // }]
       // key: {
       //   position: "right",
       //   // position: "embedded",
@@ -315,7 +320,7 @@ let spec3 = {
   columnHeader: [],
   cell: [{
     attrName: "sales",
-    rowParentId: "55555",
+    colParentId: "77777",
     blockId: "66666",
   }],
   attrInfo: [{

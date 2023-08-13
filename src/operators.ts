@@ -244,7 +244,11 @@ const get_header_id_dict = (channel?: HeaderChannel) => {
   let res = {}
   for(let hb of channel) {
     let info = get_header_id_dict(hb.children)
-    info[hb.blockId] = { hasBlank: hb.blankLine, gridMerge: hb.gridMerge} 
+    info[hb.blockId] = { 
+      hasBlank: hb.blankLine, 
+      gridMerge: hb.gridMerge,
+      locList: new Array(),
+    } 
     res = deepAssign(res, info)
   }
   return res
@@ -382,24 +386,25 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
           isKey: false,
           style: headerStyle
         }
-      // process cells unmerged-first
-      } else if(rh.gridMerge === GridMerge.UnmergedFirst) {
-        interRowTable[innerX+outerX+bias][keyDepth] = keyData
-        interRowTable[innerX+outerX+bias][headerDepth] = {
-          value: headValue,
-          source,
-          sourceBlockId,
-          rowSpan: 1, colSpan: span,
-          isUsed: false,
-          isLeaf,
-          isKey: false,
-          style: headerStyle
-        }
-      // process cells merged and unmerged-all
+      // // process cells unmerged-first
+      // } else if(rh.gridMerge === GridMerge.UnmergedFirst) {
+      //   interRowTable[innerX+outerX+bias][keyDepth] = keyData
+      //   interRowTable[innerX+outerX+bias][headerDepth] = {
+      //     value: headValue,
+      //     source,
+      //     sourceBlockId,
+      //     rowSpan: 1, colSpan: span,
+      //     isUsed: false,
+      //     isLeaf,
+      //     isKey: false,
+      //     style: headerStyle
+      //   }
+      // // process cells merged and unmerged-all
       } else {
-        let rs = (rh.gridMerge===GridMerge.UnmergedAll) ? 1 : iterCount
+        // let rs = (rh.gridMerge===GridMerge.UnmergedAll) ? 1 : iterCount
+        let rs = iterCount
         keyData.rowSpan = rs
-        for(let j:number=0; j<iterCount; j++) {
+        for(let j=0; j<iterCount; j++) {
           interRowTable[innerX+outerX+j+bias][keyDepth] = {...keyData}
           interRowTable[innerX+outerX+j+bias][headerDepth] = {
             value: headValue,
@@ -514,22 +519,23 @@ const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: nu
           isKey: false,
           style: headerStyle
         }
-      // process cells unmerged-first
-      } else if(ch.gridMerge === GridMerge.UnmergedFirst) {
-        interColumnTable[keyDepth][innerY+outerY+bias] = keyData
-        interColumnTable[headerDepth][innerY+outerY+bias] = {
-          value: headValue,
-          source,
-          sourceBlockId,
-          rowSpan: span, colSpan: 1,
-          isUsed: false,
-          isLeaf,
-          isKey: false,
-          style: headerStyle
-        }
-      // process cells merged and unmerged-all
+      // // process cells unmerged-first
+      // } else if(ch.gridMerge === GridMerge.UnmergedFirst) {
+      //   interColumnTable[keyDepth][innerY+outerY+bias] = keyData
+      //   interColumnTable[headerDepth][innerY+outerY+bias] = {
+      //     value: headValue,
+      //     source,
+      //     sourceBlockId,
+      //     rowSpan: span, colSpan: 1,
+      //     isUsed: false,
+      //     isLeaf,
+      //     isKey: false,
+      //     style: headerStyle
+      //   }
+      // // process cells merged and unmerged-all
       } else {
-        let cs = (ch.gridMerge===GridMerge.UnmergedAll) ? 1 : iterCount
+        // let cs = (ch.gridMerge===GridMerge.UnmergedAll) ? 1 : iterCount
+        let cs = iterCount
         keyData.colSpan = cs
         for(let j:number=0; j<iterCount; j++) {
           interColumnTable[keyDepth][innerY+outerY+j+bias] = {...keyData}
@@ -645,16 +651,16 @@ const gen_blank_facet_table = (rawTable, header, info, depth, outerX,
       let iterCount = 1, len = info.cellLength, tmpFacetSpan = 1, blank = 0
       let x = innerX + outerX + bias, y = depth + keyBias
       if(hb.entityMerge) {
-        [iterCount, len, tmpFacetSpan, blank] = gen_blank_facet_table(rawTable, hb.children, info, depth, outerX+innerX+1, 
-          bias, hb.entityMerge, keyBias)
+        [iterCount, len, tmpFacetSpan, blank] = gen_blank_facet_table(rawTable, hb.children, info, depth, 
+          outerX+innerX+1, bias, hb.entityMerge, keyBias)
       } else {
-        [iterCount, len, tmpFacetSpan, blank] = gen_blank_facet_table(rawTable, hb.children, info, depth+1, outerX+innerX, 
-          bias, hb.entityMerge, keyBias+keyLayer)
+        [iterCount, len, tmpFacetSpan, blank] = gen_blank_facet_table(rawTable, hb.children, info, depth+1, 
+          outerX+innerX, bias, hb.entityMerge, keyBias+keyLayer)
       }
       
       for(let j=0; j<iterCount; j++) {
         // console.log('xxxxxx',  info.oldTable[x+j][y+beforeBias].value, x+j, y+beforeBias);
-        if(rawTable[x+j][y+beforeBias] !== undefined && !hb.entityMerge && hb.gridMerge===GridMerge.Merged) {
+        if(rawTable[x+j][y+beforeBias] !== undefined && !hb.entityMerge) {
           if(info.tbClass === ROW_TABLE) {
             // if(beforeBias > 0) rawTable[x+j][y].rowSpan = tmpFacetSpan + blank
             if(nowBeforeBias > 0) rawTable[x+j][y].rowSpan = tmpFacetSpan + blank
@@ -707,7 +713,7 @@ const gen_blank_facet_table = (rawTable, header, info, depth, outerX,
     facetSpan += subFacetSpan
     if(hb.blankLine) blankLine += Math.ceil(hb.values.length / hb.facet)
   }
-  let delta1 = isPreMerge ? 1 : 0, delta2 = isPreMerge?0:1
+  let delta1 = isPreMerge ? 1 : 0
   return [innerX+delta1, maxLen, facetSpan+delta1, blankLine]
 }
 
@@ -810,7 +816,11 @@ const gen_valid_value_table = (table, tableClass, idDict) => {
   for(let t of table[0]) rowLen += t.colSpan 
   for(let i=0; i<table.length; i++) {
     for(let j=0; j<table[i].length; j++) {
-      let tmp = table[i][j], loc = new Array()
+      let tmp = table[i][j], loc = new Array(), id = tmp.sourceBlockId
+      if(id) {
+        if(idDict.rowDict[id]) idDict.rowDict[id].locList.push(i)
+        else if(idDict.colDict[id]) idDict.colDict[id].locList.push(rowRecord[i])
+      }
       for(let p=0; p<tmp.rowSpan; p++) {
         for(let q=0; q<tmp.colSpan; q++) {
           loc.push({x: i+p, y: rowRecord[i+p]+q})
@@ -827,11 +837,16 @@ const gen_valid_value_table = (table, tableClass, idDict) => {
   if(tableClass===ROW_TABLE || tableClass===CROSS_TABLE) {
     for(let i=0; i<vvTable.length; i++) {
       let hasHeader = false, hasCell = false, hasCellVal = false, hasBlank = false
+      let lastBlank = -1,  lastBId = ""
       for(let j=0; j<rowLen; j++) {
         let tmp = vvTable[i][j], id = tmp.sourceBlockId
         if(id && idDict.rowDict[id]) {
           hasHeader = true
-          if(idDict.rowDict[id].hasBlank) hasBlank = true
+          if(idDict.rowDict[id].hasBlank) {
+            hasBlank = true
+            lastBlank = j
+            lastBId = id
+          }
         } 
         if(id && idDict.cellDict[id]) {
           hasCell = true 
@@ -839,38 +854,56 @@ const gen_valid_value_table = (table, tableClass, idDict) => {
         }
       }
       if(hasHeader && hasCell && !hasCellVal) {
+        let dealBlank = false 
+        if(hasBlank) {
+          let res = idDict.rowDict[lastBId].locList.find(e => e===i)
+          if(res && vvTable[i][lastBlank].rowSpan<=1) dealBlank = true
+        }
         for(let j=0; j<rowLen; j++) {
           let tmp = vvTable[i][j], delta = 1
           tmp.isSkip = true 
-          if(hasBlank) {
+          if(dealBlank) {
             vvTable[i-1][j].isSkip = true
             delta++
           }
-          for(let {x, y} of tmp.loc) vvTable[x][y].rowSpan -= delta
+          for(let {x, y} of tmp.loc) vvTable[x][y].rowSpan -= j<lastBlank ? delta : 1
         }
       }
     }
   }
   if(tableClass===COLUM_TABLE || tableClass===CROSS_TABLE) {
     for(let j=0; j<rowLen; j++){
-      let hasHeader = false, hasCell = false, hasBlank = false
+      let hasHeader = false, hasCell = false, hasCellVal = false, hasBlank = false
+      let lastBlank = -1,  lastBId = ""
       for(let i=0; i<vvTable.length; i++) {
         let tmp = vvTable[i][j], id = tmp.sourceBlockId
         if(id && idDict.colDict[id]) {
           hasHeader = true 
-          if(idDict.colDict[id].hasBlank) hasBlank = true
+          if(idDict.colDict[id].hasBlank) {
+            hasBlank = true
+            lastBlank = i
+            lastBId = id
+          }
         }
-        if(id && idDict.cellDict[id] && tmp.value) hasCell = true        
+        if(id && idDict.cellDict[id]) {
+          hasCell = true 
+          if(tmp.value) hasCellVal = true
+        }
       }
-      if(hasHeader && !hasCell) {
+      if(hasHeader && hasCell && !hasCellVal) {
+        let dealBlank = false 
+        if(hasBlank) {
+          let res = idDict.rowDict[lastBId].locList.find(e => e===j)
+          if(res && vvTable[lastBlank][j].colSpan<=1) dealBlank = true
+        }
         for(let i=0; i<vvTable.length; i++) {
           let tmp = vvTable[i][j], delta = 1
           tmp.isSkip = true 
-          if(hasBlank) {
+          if(dealBlank) {
             vvTable[i][j-1].isSkip = true
             delta++
           }
-          for(let {x, y} of tmp.loc) vvTable[x][y].colSpan -= delta
+          for(let {x, y} of tmp.loc) vvTable[x][y].colSpan -= i<lastBlank ? delta : 1
         }
       }
     }
@@ -880,16 +913,28 @@ const gen_valid_value_table = (table, tableClass, idDict) => {
   for(let i=0; i<vvTable.length; i++) {
     if(!retTable[pos]) retTable[pos] = new Array()
     for(let j=0; j<rowLen; j++) {
-      let tmp = vvTable[i][j] 
+      let tmp = vvTable[i][j], id = tmp.sourceBlockId
+      let mergeType = GridMerge.Merged
+      let isRowHeader = (id && idDict.rowDict[id]) ? true : false
+      let isColHeader = (id && idDict.colDict[id]) ? true : false
+      if(isRowHeader) mergeType = idDict.rowDict[id].gridMerge
+      else if(isColHeader) mergeType = idDict.colDict[id].gridMerge
+      let rs = (isRowHeader && mergeType!==GridMerge.Merged) ? 1 : tmp.rowSpan
+      let cs = (isColHeader && mergeType!==GridMerge.Merged) ? 1 : tmp.colSpan
       if(tmp.isSkip) continue
       retTable[pos].push({
         value: tmp.value, 
         sourceBlockId: tmp.sourceBlockId,
-        rowSpan: tmp.rowSpan, 
-        colSpan: tmp.colSpan,
+        rowSpan: rs, 
+        colSpan: cs,
         style: tmp.style
       })
-      for(let {x, y} of tmp.loc) vvTable[x][y].isSkip = true
+      if(mergeType !== GridMerge.UnmergedAll) {
+        for(let {x, y} of tmp.loc) {
+          if(mergeType === GridMerge.Merged) vvTable[x][y].isSkip = true
+          else if(mergeType === GridMerge.UnmergedFirst) vvTable[x][y].value = undefined
+        }
+      }
     }
     if(retTable[pos].length > 0) pos++
   }
@@ -1015,7 +1060,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
       // oldTable: JSON.parse(JSON.stringify(processTable))
     }
     gen_blank_facet_table(processTable, rowHeader, info, 0, 0)
-    // console.log('new', processTable);
+    console.log('new', processTable);
     finalTable =  gen_final_table(processTable, tbClass)
     console.log('final row', finalTable);
 

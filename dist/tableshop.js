@@ -504,24 +504,24 @@ var gen_inter_row_table = function (interRowTable, rowHeader, extra, width, dept
                     isKey: false,
                     style: headerStyle
                 };
-                // process cells unmerged-first
-            }
-            else if (rh.gridMerge === GridMerge.UnmergedFirst) {
-                interRowTable[innerX + outerX + bias][keyDepth] = keyData;
-                interRowTable[innerX + outerX + bias][headerDepth] = {
-                    value: headValue,
-                    source: source,
-                    sourceBlockId: sourceBlockId,
-                    rowSpan: 1, colSpan: span,
-                    isUsed: false,
-                    isLeaf: isLeaf,
-                    isKey: false,
-                    style: headerStyle
-                };
-                // process cells merged and unmerged-all
+                // // process cells unmerged-first
+                // } else if(rh.gridMerge === GridMerge.UnmergedFirst) {
+                //   interRowTable[innerX+outerX+bias][keyDepth] = keyData
+                //   interRowTable[innerX+outerX+bias][headerDepth] = {
+                //     value: headValue,
+                //     source,
+                //     sourceBlockId,
+                //     rowSpan: 1, colSpan: span,
+                //     isUsed: false,
+                //     isLeaf,
+                //     isKey: false,
+                //     style: headerStyle
+                //   }
+                // // process cells merged and unmerged-all
             }
             else {
-                var rs = (rh.gridMerge === GridMerge.UnmergedAll) ? 1 : iterCount;
+                // let rs = (rh.gridMerge===GridMerge.UnmergedAll) ? 1 : iterCount
+                var rs = iterCount;
                 keyData.rowSpan = rs;
                 for (var j = 0; j < iterCount; j++) {
                     interRowTable[innerX + outerX + j + bias][keyDepth] = __assign({}, keyData);
@@ -648,24 +648,24 @@ var gen_inter_column_table = function (interColumnTable, columnHeader, extra, wi
                     isKey: false,
                     style: headerStyle
                 };
-                // process cells unmerged-first
-            }
-            else if (ch.gridMerge === GridMerge.UnmergedFirst) {
-                interColumnTable[keyDepth][innerY + outerY + bias] = keyData;
-                interColumnTable[headerDepth][innerY + outerY + bias] = {
-                    value: headValue,
-                    source: source,
-                    sourceBlockId: sourceBlockId,
-                    rowSpan: span, colSpan: 1,
-                    isUsed: false,
-                    isLeaf: isLeaf,
-                    isKey: false,
-                    style: headerStyle
-                };
-                // process cells merged and unmerged-all
+                // // process cells unmerged-first
+                // } else if(ch.gridMerge === GridMerge.UnmergedFirst) {
+                //   interColumnTable[keyDepth][innerY+outerY+bias] = keyData
+                //   interColumnTable[headerDepth][innerY+outerY+bias] = {
+                //     value: headValue,
+                //     source,
+                //     sourceBlockId,
+                //     rowSpan: span, colSpan: 1,
+                //     isUsed: false,
+                //     isLeaf,
+                //     isKey: false,
+                //     style: headerStyle
+                //   }
+                // // process cells merged and unmerged-all
             }
             else {
-                var cs = (ch.gridMerge === GridMerge.UnmergedAll) ? 1 : iterCount;
+                // let cs = (ch.gridMerge===GridMerge.UnmergedAll) ? 1 : iterCount
+                var cs = iterCount;
                 keyData.colSpan = cs;
                 for (var j = 0; j < iterCount; j++) {
                     interColumnTable[keyDepth][innerY + outerY + j + bias] = __assign({}, keyData);
@@ -802,7 +802,7 @@ var gen_blank_facet_table = function (rawTable, header, info, depth, outerX, bia
             }
             for (var j = 0; j < iterCount; j++) {
                 // console.log('xxxxxx',  info.oldTable[x+j][y+beforeBias].value, x+j, y+beforeBias);
-                if (rawTable[x + j][y + beforeBias] !== undefined && !hb.entityMerge && hb.gridMerge === GridMerge.Merged) {
+                if (rawTable[x + j][y + beforeBias] !== undefined && !hb.entityMerge) {
                     if (info.tbClass === ROW_TABLE) {
                         // if(beforeBias > 0) rawTable[x+j][y].rowSpan = tmpFacetSpan + blank
                         if (nowBeforeBias > 0)
@@ -828,16 +828,6 @@ var gen_blank_facet_table = function (rawTable, header, info, depth, outerX, bia
                     rawTable[x + j][y + beforeBias].hasBlank = true;
                     if (afterBias > 0)
                         rawTable[x + j][y + beforeBias + afterBias].hasBlank = true;
-                    info.withBlank = true;
-                }
-                if (hb.gridMerge !== GridMerge.Merged && info.withBlank) {
-                    if (rawTable[x + j][y + beforeBias] !== undefined) {
-                        if (beforeBias > 0)
-                            rawTable[x + j][y].hasBlank = true;
-                        rawTable[x + j][y + beforeBias].hasBlank = true;
-                        if (afterBias > 0)
-                            rawTable[x + j][y + beforeBias + afterBias].hasBlank = true;
-                    }
                 }
             }
             if (hb.facet > 1) {
@@ -1033,7 +1023,7 @@ var gen_valid_value_table = function (table, tableClass, idDict) {
     }
     if (tableClass === COLUM_TABLE || tableClass === CROSS_TABLE) {
         for (var j = 0; j < rowLen; j++) {
-            var hasHeader = false, hasCell = false, hasBlank = false;
+            var hasHeader = false, hasCell = false, hasCellVal = false, hasBlank = false;
             for (var i = 0; i < vvTable.length; i++) {
                 var tmp = vvTable[i][j], id = tmp.sourceBlockId;
                 if (id && idDict.colDict[id]) {
@@ -1041,10 +1031,13 @@ var gen_valid_value_table = function (table, tableClass, idDict) {
                     if (idDict.colDict[id].hasBlank)
                         hasBlank = true;
                 }
-                if (id && idDict.cellDict[id] && tmp.value)
+                if (id && idDict.cellDict[id]) {
                     hasCell = true;
+                    if (tmp.value)
+                        hasCellVal = true;
+                }
             }
-            if (hasHeader && !hasCell) {
+            if (hasHeader && hasCell && !hasCellVal) {
                 for (var i = 0; i < vvTable.length; i++) {
                     var tmp = vvTable[i][j], delta = 1;
                     tmp.isSkip = true;
@@ -1065,19 +1058,33 @@ var gen_valid_value_table = function (table, tableClass, idDict) {
         if (!retTable[pos])
             retTable[pos] = new Array();
         for (var j = 0; j < rowLen; j++) {
-            var tmp = vvTable[i][j];
+            var tmp = vvTable[i][j], id = tmp.sourceBlockId;
+            var mergeType = GridMerge.Merged;
+            var isRowHeader = (id && idDict.rowDict[id]) ? true : false;
+            var isColHeader = (id && idDict.colDict[id]) ? true : false;
+            if (isRowHeader)
+                mergeType = idDict.rowDict[id].gridMerge;
+            else if (isColHeader)
+                mergeType = idDict.colDict[id].gridMerge;
+            var rs = (isRowHeader && mergeType !== GridMerge.Merged) ? 1 : tmp.rowSpan;
+            var cs = (isColHeader && mergeType !== GridMerge.Merged) ? 1 : tmp.colSpan;
             if (tmp.isSkip)
                 continue;
             retTable[pos].push({
                 value: tmp.value,
                 sourceBlockId: tmp.sourceBlockId,
-                rowSpan: tmp.rowSpan,
-                colSpan: tmp.colSpan,
+                rowSpan: rs,
+                colSpan: cs,
                 style: tmp.style
             });
-            for (var _h = 0, _j = tmp.loc; _h < _j.length; _h++) {
-                var _k = _j[_h], x = _k.x, y = _k.y;
-                vvTable[x][y].isSkip = true;
+            if (mergeType !== GridMerge.UnmergedAll) {
+                for (var _h = 0, _j = tmp.loc; _h < _j.length; _h++) {
+                    var _k = _j[_h], x = _k.x, y = _k.y;
+                    if (mergeType === GridMerge.Merged)
+                        vvTable[x][y].isSkip = true;
+                    else if (mergeType === GridMerge.UnmergedFirst)
+                        vvTable[x][y].value = undefined;
+                }
             }
         }
         if (retTable[pos].length > 0)
@@ -1211,7 +1218,7 @@ var table_process = function (tbClass, data, _a) {
             // oldTable: JSON.parse(JSON.stringify(processTable))
         };
         gen_blank_facet_table(processTable, rowHeader, info, 0, 0);
-        // console.log('new', processTable);
+        console.log('new', processTable);
         finalTable = gen_final_table(processTable, tbClass);
         console.log('final row', finalTable);
     }
