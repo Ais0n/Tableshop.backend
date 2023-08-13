@@ -238,6 +238,28 @@ const get_header_is_facet = (channel?: HeaderChannel) => {
   return false
 }
 
+// get all header blockId and blankLine info
+const get_header_id_dict = (channel?: HeaderChannel) => {
+  if (!channel || channel.length == 0) return {}
+  let res = {}
+  for(let hb of channel) {
+    let info = get_header_id_dict(hb.children)
+    info[hb.blockId] = { hasBlank: hb.blankLine, gridMerge: hb.gridMerge} 
+    res = deepAssign(res, info)
+  }
+  return res
+}
+
+// get all cell blockId
+const get_cell_id_dict = (channel?: CellChannel) => {
+  if (!channel || channel.length == 0) return {}
+  let res = {}
+  for(let c of channel) {
+    res[c.blockId] = true
+  }
+  return res
+}
+
 const get_cell_val = (preVal, data, key) => {
   let res = new Array()
   for(let d of data) {
@@ -632,7 +654,7 @@ const gen_blank_facet_table = (rawTable, header, info, depth, outerX,
       
       for(let j=0; j<iterCount; j++) {
         // console.log('xxxxxx',  info.oldTable[x+j][y+beforeBias].value, x+j, y+beforeBias);
-        if(rawTable[x+j][y+beforeBias] !== undefined && !hb.entityMerge && hb.gridMerge === GridMerge.Merged) {
+        if(rawTable[x+j][y+beforeBias] !== undefined && !hb.entityMerge && hb.gridMerge===GridMerge.Merged) {
           if(info.tbClass === ROW_TABLE) {
             // if(beforeBias > 0) rawTable[x+j][y].rowSpan = tmpFacetSpan + blank
             if(nowBeforeBias > 0) rawTable[x+j][y].rowSpan = tmpFacetSpan + blank
@@ -778,6 +800,105 @@ const gen_final_table = (table, tableClass) => {
     finalTable = newFinalTable
   }
   return finalTable
+}
+
+const gen_valid_value_table = (table, tableClass, idDict) => {
+  let rowLen = 0, rowRecord = new Array(table.length).fill(0)
+  let vvTable = Array.from({length: table.length}, () => new Array(rowLen)
+                .fill(null).map(_ => ({rowSpan: 1, colSpan: 1}))) as any
+
+  for(let t of table[0]) rowLen += t.colSpan 
+  for(let i=0; i<table.length; i++) {
+    for(let j=0; j<table[i].length; j++) {
+      let tmp = table[i][j], loc = new Array()
+      for(let p=0; p<tmp.rowSpan; p++) {
+        for(let q=0; q<tmp.colSpan; q++) {
+          loc.push({x: i+p, y: rowRecord[i+p]+q})
+          vvTable[i+p][rowRecord[i+p]+q] = {
+            ...tmp,
+            loc,
+            isSkip: false,
+          }
+        }
+        rowRecord[i+p] += tmp.colSpan
+      } 
+    }
+  }
+  if(tableClass===ROW_TABLE || tableClass===CROSS_TABLE) {
+    for(let i=0; i<vvTable.length; i++) {
+      let hasHeader = false, hasCell = false, hasCellVal = false, hasBlank = false
+      for(let j=0; j<rowLen; j++) {
+        let tmp = vvTable[i][j], id = tmp.sourceBlockId
+        if(id && idDict.rowDict[id]) {
+          hasHeader = true
+          if(idDict.rowDict[id].hasBlank) hasBlank = true
+        } 
+        if(id && idDict.cellDict[id]) {
+          hasCell = true 
+          if(tmp.value) hasCellVal = true
+        }
+      }
+      if(hasHeader && hasCell && !hasCellVal) {
+        for(let j=0; j<rowLen; j++) {
+          let tmp = vvTable[i][j], delta = 1
+          tmp.isSkip = true 
+          if(hasBlank) {
+            vvTable[i-1][j].isSkip = true
+            delta++
+          }
+          for(let {x, y} of tmp.loc) vvTable[x][y].rowSpan -= delta
+        }
+      }
+    }
+  }
+  if(tableClass===COLUM_TABLE || tableClass===CROSS_TABLE) {
+    for(let j=0; j<rowLen; j++){
+      let hasHeader = false, hasCell = false, hasBlank = false
+      for(let i=0; i<vvTable.length; i++) {
+        let tmp = vvTable[i][j], id = tmp.sourceBlockId
+        if(id && idDict.colDict[id]) {
+          hasHeader = true 
+          if(idDict.colDict[id].hasBlank) hasBlank = true
+        }
+        if(id && idDict.cellDict[id] && tmp.value) hasCell = true        
+      }
+      if(hasHeader && !hasCell) {
+        for(let i=0; i<vvTable.length; i++) {
+          let tmp = vvTable[i][j], delta = 1
+          tmp.isSkip = true 
+          if(hasBlank) {
+            vvTable[i][j-1].isSkip = true
+            delta++
+          }
+          for(let {x, y} of tmp.loc) vvTable[x][y].colSpan -= delta
+        }
+      }
+    }
+  }
+
+  let retTable = new Array(), pos = 0 
+  for(let i=0; i<vvTable.length; i++) {
+    if(!retTable[pos]) retTable[pos] = new Array()
+    for(let j=0; j<rowLen; j++) {
+      let tmp = vvTable[i][j] 
+      if(tmp.isSkip) continue
+      retTable[pos].push({
+        value: tmp.value, 
+        sourceBlockId: tmp.sourceBlockId,
+        rowSpan: tmp.rowSpan, 
+        colSpan: tmp.colSpan,
+        style: tmp.style
+      })
+      for(let {x, y} of tmp.loc) vvTable[x][y].isSkip = true
+    }
+    if(retTable[pos].length > 0) pos++
+  }
+  // const util = require('util');
+  // console.log('id dict', util.inspect(idDict, {showHidden: false, depth: null, colors: true}));
+  // console.log('vv Table', util.inspect(retTable, {showHidden: false, depth: null, colors: true}));
+  console.log('vv Table', retTable);
+
+  return retTable
 }
 
 const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, attrInfo}) => {
@@ -1400,8 +1521,15 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
       console.log('final cross', finalTable);
     }
   }
+
+  let idDict = {
+    "rowDict": get_header_id_dict(rowHeader),
+    "colDict": get_header_id_dict(columnHeader),
+    "cellDict": get_cell_id_dict(cell)
+  }
+  finalTable = gen_valid_value_table(finalTable, tbClass, idDict)
   console.log(rowDepth, colDepth, rowSize, colSize);
-  
+  console.log(idDict);
   return finalTable
 }
 

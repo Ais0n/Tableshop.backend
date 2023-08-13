@@ -24,11 +24,6 @@ var __assign = function() {
     return __assign.apply(this, arguments);
 };
 
-typeof SuppressedError === "function" ? SuppressedError : function (error, suppressed, message) {
-    var e = new Error(message);
-    return e.name = "SuppressedError", e.error = error, e.suppressed = suppressed, e;
-};
-
 var SourceTableFormat;
 (function (SourceTableFormat) {
     SourceTableFormat["JSON"] = "json";
@@ -346,6 +341,30 @@ var get_header_is_facet = function (channel) {
             return true;
     }
     return false;
+};
+// get all header blockId and blankLine info
+var get_header_id_dict = function (channel) {
+    if (!channel || channel.length == 0)
+        return {};
+    var res = {};
+    for (var _i = 0, channel_10 = channel; _i < channel_10.length; _i++) {
+        var hb = channel_10[_i];
+        var info = get_header_id_dict(hb.children);
+        info[hb.blockId] = { hasBlank: hb.blankLine };
+        res = deepAssign(res, info);
+    }
+    return res;
+};
+// get all cell blockId
+var get_cell_id_dict = function (channel) {
+    if (!channel || channel.length == 0)
+        return {};
+    var res = {};
+    for (var _i = 0, channel_11 = channel; _i < channel_11.length; _i++) {
+        var c = channel_11[_i];
+        res[c.blockId] = true;
+    }
+    return res;
 };
 var get_cell_val = function (preVal, data, key) {
     var res = new Array();
@@ -807,6 +826,16 @@ var gen_blank_facet_table = function (rawTable, header, info, depth, outerX, bia
                     rawTable[x + j][y + beforeBias].hasBlank = true;
                     if (afterBias > 0)
                         rawTable[x + j][y + beforeBias + afterBias].hasBlank = true;
+                    info.withBlank = true;
+                }
+                if (hb.gridMerge !== GridMerge.Merged && info.withBlank) {
+                    if (rawTable[x + j][y + beforeBias] !== undefined) {
+                        if (beforeBias > 0)
+                            rawTable[x + j][y].hasBlank = true;
+                        rawTable[x + j][y + beforeBias].hasBlank = true;
+                        if (afterBias > 0)
+                            rawTable[x + j][y + beforeBias + afterBias].hasBlank = true;
+                    }
                 }
             }
             if (hb.facet > 1) {
@@ -947,6 +976,116 @@ var gen_final_table = function (table, tableClass) {
         finalTable = newFinalTable;
     }
     return finalTable;
+};
+var gen_valid_value_table = function (table, tableClass, idDict) {
+    var rowLen = 0, rowRecord = new Array(table.length).fill(0);
+    var vvTable = Array.from({ length: table.length }, function () { return new Array(rowLen)
+        .fill(null).map(function (_) { return ({ rowSpan: 1, colSpan: 1 }); }); });
+    for (var _i = 0, _a = table[0]; _i < _a.length; _i++) {
+        var t = _a[_i];
+        rowLen += t.colSpan;
+    }
+    for (var i = 0; i < table.length; i++) {
+        for (var j = 0; j < table[i].length; j++) {
+            var tmp = table[i][j], loc = new Array();
+            for (var p = 0; p < tmp.rowSpan; p++) {
+                for (var q = 0; q < tmp.colSpan; q++) {
+                    loc.push({ x: i + p, y: rowRecord[i + p] + q });
+                    vvTable[i + p][rowRecord[i + p] + q] = __assign(__assign({}, tmp), { loc: loc, isSkip: false });
+                }
+                rowRecord[i + p] += tmp.colSpan;
+            }
+        }
+    }
+    if (tableClass === ROW_TABLE || tableClass === CROSS_TABLE) {
+        for (var i = 0; i < vvTable.length; i++) {
+            var hasHeader = false, hasCell = false, hasCellVal = false, hasBlank = false;
+            for (var j = 0; j < rowLen; j++) {
+                var tmp = vvTable[i][j], id = tmp.sourceBlockId;
+                if (id && idDict.rowDict[id]) {
+                    hasHeader = true;
+                    if (idDict.rowDict[id].hasBlank)
+                        hasBlank = true;
+                }
+                if (id && idDict.cellDict[id]) {
+                    hasCell = true;
+                    if (tmp.value)
+                        hasCellVal = true;
+                }
+            }
+            if (hasHeader && hasCell && !hasCellVal) {
+                for (var j = 0; j < rowLen; j++) {
+                    var tmp = vvTable[i][j], delta = 1;
+                    tmp.isSkip = true;
+                    if (hasBlank) {
+                        vvTable[i - 1][j].isSkip = true;
+                        delta++;
+                    }
+                    for (var _b = 0, _c = tmp.loc; _b < _c.length; _b++) {
+                        var _d = _c[_b], x = _d.x, y = _d.y;
+                        vvTable[x][y].rowSpan -= delta;
+                    }
+                }
+            }
+        }
+    }
+    if (tableClass === COLUM_TABLE || tableClass === CROSS_TABLE) {
+        for (var j = 0; j < rowLen; j++) {
+            var hasHeader = false, hasCell = false, hasBlank = false;
+            for (var i = 0; i < vvTable.length; i++) {
+                var tmp = vvTable[i][j], id = tmp.sourceBlockId;
+                if (id && idDict.colDict[id]) {
+                    hasHeader = true;
+                    if (idDict.colDict[id].hasBlank)
+                        hasBlank = true;
+                }
+                if (id && idDict.cellDict[id] && tmp.value)
+                    hasCell = true;
+            }
+            if (hasHeader && !hasCell) {
+                for (var i = 0; i < vvTable.length; i++) {
+                    var tmp = vvTable[i][j], delta = 1;
+                    tmp.isSkip = true;
+                    if (hasBlank) {
+                        vvTable[i][j - 1].isSkip = true;
+                        delta++;
+                    }
+                    for (var _e = 0, _f = tmp.loc; _e < _f.length; _e++) {
+                        var _g = _f[_e], x = _g.x, y = _g.y;
+                        vvTable[x][y].colSpan -= delta;
+                    }
+                }
+            }
+        }
+    }
+    var retTable = new Array(), pos = 0;
+    for (var i = 0; i < vvTable.length; i++) {
+        if (!retTable[pos])
+            retTable[pos] = new Array();
+        for (var j = 0; j < rowLen; j++) {
+            var tmp = vvTable[i][j];
+            if (tmp.isSkip)
+                continue;
+            retTable[pos].push({
+                value: tmp.value,
+                sourceBlockId: tmp.sourceBlockId,
+                rowSpan: tmp.rowSpan,
+                colSpan: tmp.colSpan,
+                style: tmp.style
+            });
+            for (var _h = 0, _j = tmp.loc; _h < _j.length; _h++) {
+                var _k = _j[_h], x = _k.x, y = _k.y;
+                vvTable[x][y].isSkip = true;
+            }
+        }
+        if (retTable[pos].length > 0)
+            pos++;
+    }
+    // const util = require('util');
+    // console.log('id dict', util.inspect(idDict, {showHidden: false, depth: null, colors: true}));
+    // console.log('vv Table', util.inspect(retTable, {showHidden: false, depth: null, colors: true}));
+    console.log('vv Table', retTable);
+    return retTable;
 };
 var table_process = function (tbClass, data, _a) {
     var rowHeader = _a.rowHeader, columnHeader = _a.columnHeader, cell = _a.cell, attrInfo = _a.attrInfo;
@@ -1602,6 +1741,12 @@ var table_process = function (tbClass, data, _a) {
             console.log('final cross', finalTable);
         }
     }
+    var idDict = {
+        "rowDict": get_header_id_dict(rowHeader),
+        "colDict": get_header_id_dict(columnHeader),
+        "cellDict": get_cell_id_dict(cell)
+    };
+    finalTable = gen_valid_value_table(finalTable, tbClass, idDict);
     console.log(rowDepth, colDepth, rowSize, colSize);
     return finalTable;
 };

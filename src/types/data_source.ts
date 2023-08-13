@@ -117,6 +117,7 @@ export interface HeaderBlock {
 
 export interface CellBlock {
   attrName: string;
+  blockId: string;
   rowParentId?: string;
   columnParentId?: string;
   className?: string;
