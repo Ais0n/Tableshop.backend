@@ -85,6 +85,28 @@ var CROSS_TABLE = "cross table";
 var ROW_TABLE = "row table";
 var COLUM_TABLE = "column table";
 
+var SelectorType;
+(function (SelectorType) {
+    // block level selector
+    SelectorType["TABLE"] = ".table";
+    SelectorType["HEADER"] = ".header";
+    SelectorType["ROW_HEADER"] = ".rowHeader";
+    SelectorType["COL_HEADER"] = ".columnHeader";
+    SelectorType["CELL"] = ".cell";
+    SelectorType["ROW_H_LEVEL"] = ".rl";
+    SelectorType["COL_H_LEVEL"] = ".cl";
+    // line level selector
+    SelectorType["ROW_ODD"] = ".oddRows";
+    SelectorType["COL_ODD"] = ".oddCols";
+    SelectorType["ROW_EVEN"] = ".evenRows";
+    SelectorType["COL_EVEN"] = ".evenCols";
+    SelectorType["ROW_LEVEL"] = ".r";
+    SelectorType["COL_LEVEL"] = ".c";
+    // function selector
+    SelectorType["SUM_TITLE"] = ".sumTitle";
+    SelectorType["SUM_CELL"] = ".sumCell";
+})(SelectorType || (SelectorType = {}));
+
 var deepAssign = function (target, source) {
     for (var key in source) {
         if (typeof source[key] !== "object") {
@@ -104,6 +126,90 @@ var deepAssign = function (target, source) {
     return target;
 };
 
+// init style selector
+var style_selector_fill = function (bId, loc, styles, idDict) {
+    if (!bId)
+        bId = "undefined";
+    var res = {};
+    for (var sel in styles) {
+        if (sel === SelectorType.TABLE) {
+            res = deepAssign(res, styles[sel]);
+        }
+        else if (sel === SelectorType.HEADER) {
+            if (idDict.rowDict[bId] || idDict.colDict[bId])
+                res = deepAssign(res, styles[sel]);
+        }
+        else if (sel === SelectorType.ROW_HEADER) {
+            if (idDict.rowDict[bId])
+                res = deepAssign(res, styles[sel]);
+        }
+        else if (sel === SelectorType.COL_HEADER) {
+            if (idDict.colDict[bId])
+                res = deepAssign(res, styles[sel]);
+        }
+        else if (sel === SelectorType.CELL) {
+            if (idDict.cellDict[bId])
+                res = deepAssign(res, styles[sel]);
+        }
+        else if (sel.startsWith(SelectorType.ROW_H_LEVEL)) {
+            var depth = parseInt(sel.slice(3)) - 1;
+            if (idDict.rowDict[bId] && idDict.rowDict[bId].depth === depth)
+                res = deepAssign(res, styles[sel]);
+        }
+        else if (sel.startsWith(SelectorType.COL_H_LEVEL)) {
+            var depth = parseInt(sel.slice(3)) - 1;
+            if (idDict.colDict[bId] && idDict.colDict[bId].depth === depth)
+                res = deepAssign(res, styles[sel]);
+        }
+        else if (sel === SelectorType.SUM_TITLE) {
+            if (idDict.rowDict[bId] || idDict.colDict[bId]) {
+                if (idDict.rowDict[bId].function === FUNC_SUM)
+                    res = deepAssign(res, styles[sel]);
+                else if (idDict.colDict[bId].function === FUNC_SUM)
+                    res = deepAssign(res, styles[sel]);
+            }
+        }
+        else if (sel === SelectorType.SUM_CELL) {
+            if (idDict.cellDict[bId]) {
+                var rowPId = idDict.cellDict[bId].rowPId, colPId = idDict.cellDict[bId].colPId;
+                var isSet = false;
+                if (rowPId && idDict.rowDict[rowPId] && idDict.rowDict[rowPId].function === FUNC_SUM)
+                    isSet = true;
+                else if (colPId && idDict.colDict[colPId] && idDict.colDict[colPId].function === FUNC_SUM)
+                    isSet = true;
+                if (isSet)
+                    res = deepAssign(res, styles[sel]);
+            }
+        }
+        else if (sel === SelectorType.ROW_ODD) {
+            if (loc.x % 2 !== 0)
+                res = deepAssign(res, styles[sel]);
+        }
+        else if (sel === SelectorType.COL_ODD) {
+            if (loc.y % 2 !== 0)
+                res = deepAssign(res, styles[sel]);
+        }
+        else if (sel === SelectorType.ROW_EVEN) {
+            if (loc.x % 2 === 0)
+                res = deepAssign(res, styles[sel]);
+        }
+        else if (sel === SelectorType.COL_EVEN) {
+            if (loc.y % 2 === 0)
+                res = deepAssign(res, styles[sel]);
+        }
+        else if (sel.startsWith(SelectorType.ROW_LEVEL)) {
+            var level = parseInt(sel.slice(2));
+            if (loc.x === level)
+                res = deepAssign(res, styles[sel]);
+        }
+        else if (sel.startsWith(SelectorType.COL_LEVEL)) {
+            var level = parseInt(sel.slice(2));
+            if (loc.y === level)
+                res = deepAssign(res, styles[sel]);
+        }
+    }
+    return res;
+};
 // init header info
 var header_fill = function (attrInfo, styles, header) {
     var _a, _b, _c, _d, _e;
@@ -343,17 +449,22 @@ var get_header_is_facet = function (channel) {
     return false;
 };
 // get all header blockId and blankLine info
-var get_header_id_dict = function (channel) {
+var get_header_id_dict = function (channel, depth) {
+    if (depth === void 0) { depth = 0; }
     if (!channel || channel.length == 0)
         return {};
     var res = {};
     for (var _i = 0, channel_10 = channel; _i < channel_10.length; _i++) {
         var hb = channel_10[_i];
-        var info = get_header_id_dict(hb.children);
+        var info = get_header_id_dict(hb.children, depth + 1);
         info[hb.blockId] = {
             hasBlank: hb.blankLine,
             gridMerge: hb.gridMerge,
             locList: new Array(),
+            depth: depth,
+            function: hb.function,
+            className: hb.className,
+            style: hb.style
         };
         res = deepAssign(res, info);
     }
@@ -366,7 +477,12 @@ var get_cell_id_dict = function (channel) {
     var res = {};
     for (var _i = 0, channel_11 = channel; _i < channel_11.length; _i++) {
         var c = channel_11[_i];
-        res[c.blockId] = true;
+        res[c.blockId] = {
+            rowPId: c.rowParentId,
+            colPId: c.columnParentId,
+            className: c.className,
+            style: c.style
+        };
     }
     return res;
 };
@@ -460,7 +576,8 @@ var gen_inter_row_table = function (interRowTable, rowHeader, extra, width, dept
         var isLeaf = (rh.children && rh.children.length) ? false : true;
         var sourceBlockId = rh.blockId, source = (_a = rh.attrName) !== null && _a !== void 0 ? _a : rh.function;
         var headerDepth = depth + keyBias + leftBias, keyDepth = headerDepth;
-        var headerStyle = style_process(rh.style);
+        // let headerStyle = style_process(rh.style)
+        var headerStyle = rh.style;
         var isKeyEmbedded = false;
         if (rh.key && rh.key.position === Position.LEFT)
             keyDepth = headerDepth - 1;
@@ -544,7 +661,8 @@ var gen_inter_row_table = function (interRowTable, rowHeader, extra, width, dept
                 for (var _c = 0, _d = extra.cell; _c < _d.length; _c++) {
                     var c = _d[_c];
                     if (c.rowParentId === rh.blockId) {
-                        var cellStyle = style_process(c.style);
+                        // let cellStyle = style_process(c.style)
+                        var cellStyle = c.style;
                         // process function cell
                         if (rh.function) {
                             if (!agg_type_check(extra.attrInfo, c.attrName))
@@ -604,7 +722,8 @@ var gen_inter_column_table = function (interColumnTable, columnHeader, extra, wi
         var isLeaf = (ch.children && ch.children.length) ? false : true;
         var sourceBlockId = ch.blockId, source = (_a = ch.attrName) !== null && _a !== void 0 ? _a : ch.function;
         var headerDepth = depth + keyBias + topBias, keyDepth = headerDepth;
-        var headerStyle = style_process(ch.style);
+        // let headerStyle = style_process(ch.style)
+        var headerStyle = ch.style;
         var isKeyEmbedded = false;
         if (ch.key && ch.key.position === Position.TOP)
             keyDepth = headerDepth - 1;
@@ -688,7 +807,8 @@ var gen_inter_column_table = function (interColumnTable, columnHeader, extra, wi
                 for (var _c = 0, _d = extra.cell; _c < _d.length; _c++) {
                     var c = _d[_c];
                     if (c.colParentId === ch.blockId) {
-                        var cellStyle = style_process(c.style);
+                        // let cellStyle = style_process(c.style)
+                        var cellStyle = c.style;
                         // process function cell
                         if (ch.function) {
                             if (!agg_type_check(extra.attrInfo, c.attrName))
@@ -737,7 +857,8 @@ var gen_inter_cross_table = function (interCrossTable, rowExtra, colExtra, cell)
             for (var _i = 0, cell_2 = cell; _i < cell_2.length; _i++) {
                 var c = cell_2[_i];
                 if (c.rowParentId === rowValIdx[i].blockId && c.colParentId === colValIdx[j].blockId) {
-                    var cellStyle = style_process(c.style);
+                    // let cellStyle = style_process(c.style)
+                    var cellStyle = c.style;
                     var x = rowValIdx[i].idx, y = colValIdx[j].idx;
                     if (rowValIdx[i].isAgg || colValIdx[j].isAgg) {
                         if (!agg_type_check(rowExtra.attrInfo, c.attrName))
@@ -895,8 +1016,6 @@ var gen_final_table = function (table, tableClass) {
     for (var _i = 0, table_1 = table; _i < table_1.length; _i++) {
         var t = table_1[_i];
         var resLen = maxLength - t.length, tmp = t.length;
-        // for(let i=0; i<t.length; i++) {
-        // }
         for (var i = 0; i < resLen; i++) {
             if (tableClass === ROW_TABLE)
                 t.push({ rowSpan: 1, colSpan: spanList[i + tmp] });
@@ -971,6 +1090,7 @@ var gen_final_table = function (table, tableClass) {
     }
     return finalTable;
 };
+// generate matched value table
 var gen_valid_value_table = function (table, tableClass, idDict) {
     var rowLen = 0, rowRecord = new Array(table.length).fill(0);
     var vvTable = Array.from({ length: table.length }, function () { return new Array(rowLen)
@@ -1125,13 +1245,36 @@ var gen_valid_value_table = function (table, tableClass, idDict) {
             pos++;
     }
     // const util = require('util');
-    // console.log('id dict', util.inspect(idDict, {showHidden: false, depth: null, colors: true}));
     // console.log('vv Table', util.inspect(retTable, {showHidden: false, depth: null, colors: true}));
-    console.log('vv Table', retTable);
+    // console.log('vv Table', retTable);
+    return retTable;
+};
+var gen_styled_table = function (table, styles, idDict) {
+    var rowLen = 0, rowRecord = new Array(table.length).fill(0);
+    var retTable = new Array();
+    for (var _i = 0, _a = table[0]; _i < _a.length; _i++) {
+        var t = _a[_i];
+        rowLen += t.colSpan;
+    }
+    for (var i = 0; i < table.length; i++) {
+        retTable[i] = new Array();
+        for (var j = 0; j < table[i].length; j++) {
+            var tmp = __assign({}, table[i][j]), id = tmp.sourceBlockId;
+            var loc = { x: i + 1, y: rowRecord[i] + 1 };
+            tmp.style = style_process(deepAssign(style_selector_fill(id, loc, styles, idDict), tmp.style));
+            retTable[i].push(tmp);
+            for (var p = 0; p < tmp.rowSpan; p++) {
+                rowRecord[i + p] += tmp.colSpan;
+            }
+        }
+    }
+    // const util = require('util');
+    // console.log('styled Table', util.inspect(retTable, {showHidden: false, depth: null, colors: true}));
+    console.log('styled Table', retTable);
     return retTable;
 };
 var table_process = function (tbClass, data, _a) {
-    var rowHeader = _a.rowHeader, columnHeader = _a.columnHeader, cell = _a.cell, attrInfo = _a.attrInfo;
+    var rowHeader = _a.rowHeader, columnHeader = _a.columnHeader, cell = _a.cell, attrInfo = _a.attrInfo, styles = _a.styles;
     var interTable, processTable = new Array();
     var finalTable = [];
     var rowDepth = calc_head_depth(rowHeader);
@@ -1790,6 +1933,7 @@ var table_process = function (tbClass, data, _a) {
         "cellDict": get_cell_id_dict(cell)
     };
     finalTable = gen_valid_value_table(finalTable, tbClass, idDict);
+    finalTable = gen_styled_table(finalTable, styles, idDict);
     console.log(rowDepth, colDepth, rowSize, colSize);
     console.log(idDict);
     return finalTable;
@@ -1803,7 +1947,7 @@ var transform = function (task) {
         console.log('Warning:', err.message);
         return new Array();
     }
-    var rowHeader = spec.rowHeader, columnHeader = spec.columnHeader, cell = spec.cell; spec.styles; var attrInfo = spec.attrInfo;
+    var rowHeader = spec.rowHeader, columnHeader = spec.columnHeader, cell = spec.cell, styles = spec.styles, attrInfo = spec.attrInfo;
     // check table class
     var tableClass = "";
     if (rowHeader !== undefined && rowHeader.length > 0) {
@@ -1815,7 +1959,7 @@ var transform = function (task) {
     else {
         tableClass = COLUM_TABLE;
     }
-    return table_process(tableClass, data, { rowHeader: rowHeader, columnHeader: columnHeader, cell: cell, attrInfo: attrInfo });
+    return table_process(tableClass, data, { rowHeader: rowHeader, columnHeader: columnHeader, cell: cell, attrInfo: attrInfo, styles: styles });
 };
 
 var utils = /*#__PURE__*/Object.freeze({

@@ -7,9 +7,79 @@ import {
   HeaderBlock, CellBlock, HeaderChannel, CellChannel, StyleClass,
   FUNC_SUM,
   CROSS_TABLE, ROW_TABLE, COLUM_TABLE, 
-  interCell
+  interCell,
+  SelectorType
 } from "./types";
 import { deepAssign } from "./utils";
+
+
+// init style selector
+const style_selector_fill =  (bId, loc, styles: StyleClass, idDict) => {
+  if(!bId) bId = "undefined"
+  let res = {}
+  for(let sel in styles) {
+    if(sel === SelectorType.TABLE) {
+      res = deepAssign(res, styles[sel])
+
+    } else if(sel === SelectorType.HEADER) {
+      if(idDict.rowDict[bId] || idDict.colDict[bId]) res = deepAssign(res, styles[sel])
+
+    } else if(sel === SelectorType.ROW_HEADER) {
+      if(idDict.rowDict[bId]) res = deepAssign(res, styles[sel])
+
+    } else if(sel === SelectorType.COL_HEADER) {
+      if(idDict.colDict[bId]) res = deepAssign(res, styles[sel])
+
+    } else if(sel === SelectorType.CELL) {
+      if(idDict.cellDict[bId]) res = deepAssign(res, styles[sel])
+
+    } else if(sel.startsWith(SelectorType.ROW_H_LEVEL)) {
+      let depth = parseInt(sel.slice(3)) - 1
+      if(idDict.rowDict[bId] && idDict.rowDict[bId].depth===depth) res = deepAssign(res, styles[sel])
+
+    } else if(sel.startsWith(SelectorType.COL_H_LEVEL)) {
+      let depth = parseInt(sel.slice(3)) - 1
+      if(idDict.colDict[bId] && idDict.colDict[bId].depth===depth) res = deepAssign(res, styles[sel])
+
+    } else if(sel === SelectorType.SUM_TITLE) {
+      if(idDict.rowDict[bId] || idDict.colDict[bId]) {
+        if(idDict.rowDict[bId].function === FUNC_SUM) res = deepAssign(res, styles[sel])
+        else if(idDict.colDict[bId].function === FUNC_SUM) res = deepAssign(res, styles[sel])
+      }
+
+    } else if(sel === SelectorType.SUM_CELL) {
+      if(idDict.cellDict[bId]) {
+        let rowPId = idDict.cellDict[bId].rowPId, colPId = idDict.cellDict[bId].colPId
+        let isSet = false
+        if(rowPId && idDict.rowDict[rowPId] && idDict.rowDict[rowPId].function===FUNC_SUM) isSet = true 
+        else if(colPId && idDict.colDict[colPId] && idDict.colDict[colPId].function===FUNC_SUM) isSet = true 
+        if(isSet) res = deepAssign(res, styles[sel])
+      }
+      
+    } else if(sel === SelectorType.ROW_ODD) {
+      if(loc.x%2!==0) res = deepAssign(res, styles[sel])
+
+    } else if(sel === SelectorType.COL_ODD) {
+      if(loc.y%2!==0) res = deepAssign(res, styles[sel])
+
+    } else if(sel === SelectorType.ROW_EVEN) {
+      if(loc.x%2===0) res = deepAssign(res, styles[sel])
+
+    } else if(sel === SelectorType.COL_EVEN) {
+      if(loc.y%2===0) res = deepAssign(res, styles[sel])
+
+    } else if(sel.startsWith(SelectorType.ROW_LEVEL)) {
+      let level = parseInt(sel.slice(2))
+      if(loc.x===level) res = deepAssign(res, styles[sel])
+
+    } else if(sel.startsWith(SelectorType.COL_LEVEL)) {
+      let level = parseInt(sel.slice(2))
+      if(loc.y===level) res = deepAssign(res, styles[sel])
+
+    }
+  }
+  return res 
+}
 
 
 // init header info
@@ -239,15 +309,19 @@ const get_header_is_facet = (channel?: HeaderChannel) => {
 }
 
 // get all header blockId and blankLine info
-const get_header_id_dict = (channel?: HeaderChannel) => {
+const get_header_id_dict = (channel?: HeaderChannel, depth = 0) => {
   if (!channel || channel.length == 0) return {}
   let res = {}
   for(let hb of channel) {
-    let info = get_header_id_dict(hb.children)
+    let info = get_header_id_dict(hb.children, depth+1)
     info[hb.blockId] = { 
       hasBlank: hb.blankLine, 
       gridMerge: hb.gridMerge,
       locList: new Array(),
+      depth,
+      function: hb.function,
+      className: hb.className,
+      style: hb.style
     } 
     res = deepAssign(res, info)
   }
@@ -259,7 +333,12 @@ const get_cell_id_dict = (channel?: CellChannel) => {
   if (!channel || channel.length == 0) return {}
   let res = {}
   for(let c of channel) {
-    res[c.blockId] = true
+    res[c.blockId] = {
+      rowPId: c.rowParentId,
+      colPId: c.columnParentId,
+      className: c.className,
+      style: c.style
+    }
   }
   return res
 }
@@ -341,7 +420,8 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
     let isLeaf = (rh.children && rh.children.length) ? false : true
     let sourceBlockId = rh.blockId, source = rh.attrName ?? rh.function
     let headerDepth = depth + keyBias + leftBias, keyDepth = headerDepth
-    let headerStyle = style_process(rh.style)
+    // let headerStyle = style_process(rh.style)
+    let headerStyle = rh.style
     let isKeyEmbedded = false
     if(rh.key && rh.key.position === Position.LEFT) keyDepth = headerDepth - 1
     if(rh.key && rh.key.position === Position.RIGHT) keyDepth = headerDepth + 1
@@ -422,7 +502,8 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
       if(!extra.notSearchCell && isLeaf) {
         for(let c of extra.cell) {
           if(c.rowParentId === rh.blockId) {
-            let cellStyle = style_process(c.style)
+            // let cellStyle = style_process(c.style)
+            let cellStyle = c.style
             // process function cell
             if(rh.function) {
               if(!agg_type_check(extra.attrInfo, c.attrName)) throw new Error("Function can only be used to numerical>")
@@ -474,7 +555,8 @@ const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: nu
     let isLeaf = (ch.children && ch.children.length) ? false : true
     let sourceBlockId = ch.blockId, source = ch.attrName ?? ch.function
     let headerDepth = depth + keyBias + topBias, keyDepth = headerDepth
-    let headerStyle = style_process(ch.style)
+    // let headerStyle = style_process(ch.style)
+    let headerStyle = ch.style
     let isKeyEmbedded = false
     if(ch.key && ch.key.position === Position.TOP) keyDepth = headerDepth - 1
     if(ch.key && ch.key.position === Position.BOTTOM) keyDepth = headerDepth + 1
@@ -555,7 +637,8 @@ const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: nu
       if(!extra.notSearchCell && isLeaf) {
         for(let c of extra.cell) {
           if(c.colParentId === ch.blockId) {
-            let cellStyle = style_process(c.style)
+            // let cellStyle = style_process(c.style)
+            let cellStyle = c.style
             // process function cell
             if(ch.function) {
               if(!agg_type_check(extra.attrInfo, c.attrName)) throw new Error("Function can only be used to numerical>")
@@ -601,7 +684,8 @@ const gen_inter_cross_table = (interCrossTable, rowExtra, colExtra, cell) => {
     for(let j=0; j<colValIdx.length; j++) {
       for(let c of cell) {
         if(c.rowParentId === rowValIdx[i].blockId && c.colParentId === colValIdx[j].blockId) {
-          let cellStyle = style_process(c.style)
+          // let cellStyle = style_process(c.style)
+          let cellStyle = c.style
           let x = rowValIdx[i].idx, y = colValIdx[j].idx
           if(rowValIdx[i].isAgg || colValIdx[j].isAgg) {
             if(!agg_type_check(rowExtra.attrInfo, c.attrName)) throw new Error("Function can only be used to numerical>")
@@ -738,9 +822,6 @@ const gen_final_table = (table, tableClass) => {
   // fill each length
   for(let t of table) {
     let resLen = maxLength - t.length, tmp = t.length 
-    // for(let i=0; i<t.length; i++) {
-
-    // }
     for(let i=0; i<resLen; i++) {
       if(tableClass === ROW_TABLE) t.push({rowSpan: 1, colSpan: spanList[i+tmp]})
       else if(tableClass === COLUM_TABLE) t.push({rowSpan: spanList[i+tmp], colSpan: 1})
@@ -808,6 +889,7 @@ const gen_final_table = (table, tableClass) => {
   return finalTable
 }
 
+// generate matched value table
 const gen_valid_value_table = (table, tableClass, idDict) => {
   let rowLen = 0, rowRecord = new Array(table.length).fill(0)
   let vvTable = Array.from({length: table.length}, () => new Array(rowLen)
@@ -939,14 +1021,37 @@ const gen_valid_value_table = (table, tableClass, idDict) => {
     if(retTable[pos].length > 0) pos++
   }
   // const util = require('util');
-  // console.log('id dict', util.inspect(idDict, {showHidden: false, depth: null, colors: true}));
   // console.log('vv Table', util.inspect(retTable, {showHidden: false, depth: null, colors: true}));
-  console.log('vv Table', retTable);
+  // console.log('vv Table', retTable);
 
   return retTable
 }
 
-const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, attrInfo}) => {
+const gen_styled_table = (table, styles, idDict) => {
+  let rowLen = 0, rowRecord = new Array(table.length).fill(0)
+  let retTable = new Array()
+
+  for(let t of table[0]) rowLen += t.colSpan 
+  for(let i=0; i<table.length; i++) {
+    retTable[i] = new Array()
+    for(let j=0; j<table[i].length; j++) {
+      let tmp = {...table[i][j]}, id = tmp.sourceBlockId
+      let loc = {x: i+1, y: rowRecord[i]+1}
+      tmp.style = style_process(deepAssign(style_selector_fill(id, loc, styles, idDict), tmp.style))
+      retTable[i].push(tmp)
+      for(let p=0; p<tmp.rowSpan; p++) {
+        rowRecord[i+p] += tmp.colSpan
+      } 
+    }
+  }
+  // const util = require('util');
+  // console.log('styled Table', util.inspect(retTable, {showHidden: false, depth: null, colors: true}));
+  console.log('styled Table', retTable);
+
+  return retTable
+}
+
+const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, attrInfo, styles}) => {
   let interTable, processTable = new Array()
   let finalTable: interCell[][] = []
   let rowDepth = calc_head_depth(rowHeader);
@@ -1573,6 +1678,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
     "cellDict": get_cell_id_dict(cell)
   }
   finalTable = gen_valid_value_table(finalTable, tbClass, idDict)
+  finalTable = gen_styled_table(finalTable, styles, idDict)
   console.log(rowDepth, colDepth, rowSize, colSize);
   console.log(idDict);
   return finalTable
@@ -1599,7 +1705,7 @@ const transform = (task: Spec) => {
   }
 
 
-  return table_process(tableClass, data, {rowHeader, columnHeader, cell, attrInfo})
+  return table_process(tableClass, data, {rowHeader, columnHeader, cell, attrInfo, styles})
 }
 
 export {spec_init, transform}

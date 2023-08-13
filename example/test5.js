@@ -166,7 +166,7 @@ let spec = {
   "left": 219,
   "top": 256,
   "styles": {
-    ".": {
+    ".table": {
       "font": {
         "weight": "Regular",
       }
@@ -203,7 +203,7 @@ let spec = {
         position: "All",
       }
     },
-    ".evenrows": {
+    ".evenRows": {
       "background": {
         color: "#cccccc"
       }
@@ -349,7 +349,7 @@ let spec3 = {
 
 
 // tableShop.utils.transform({data, spec})
-let res = tableShop.utils.transform({ data, spec: spec3 })
+let res = tableShop.utils.transform({ data, spec: spec })
 
 
 // output

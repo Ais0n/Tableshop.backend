@@ -8,6 +8,7 @@ import {
   FUNC_SUM
 } from "./data_source"
 import { CROSS_TABLE, ROW_TABLE, COLUM_TABLE, interCell } from "./data_intermediate";
+import { SelectorType } from "./style_selector";
 
 interface Spec {
   data: SourceTable;
@@ -23,5 +24,6 @@ export {
   HeaderBlock, CellBlock, HeaderChannel, CellChannel, StyleClass,
   FUNC_SUM,
   CROSS_TABLE, ROW_TABLE, COLUM_TABLE, 
-  interCell
+  interCell,
+  SelectorType
 }
