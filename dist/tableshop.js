@@ -128,12 +128,12 @@ var deepAssign = function (target, source) {
     return target;
 };
 
+var util = require('util');
 // init style selector
 var style_selector_fill = function (bId, loc, styles, idDict) {
     if (!bId)
         bId = "undefined";
     var res = {};
-    console.log('look', bId, loc);
     for (var sel in styles) {
         if (sel === SelectorType.TABLE) {
             res = deepAssign(res, styles[sel]);
@@ -993,7 +993,6 @@ var gen_blank_facet_table = function (rawTable, header, info, depth, outerX, bia
     return [innerX + delta1, maxLen, facetSpan + delta1, blankLine];
 };
 var gen_final_table = function (table, tableClass) {
-    var finalTable = new Array();
     var h = 0, oldLen = table.length, maxLength = 0;
     var spanList = new Array();
     for (var i = 0; i < oldLen; i++) {
@@ -1026,11 +1025,10 @@ var gen_final_table = function (table, tableClass) {
                 t.push({ rowSpan: spanList[i + tmp], colSpan: 1 });
         }
     }
+    var finalTable = Array.from({ length: table.length }, function () { return new Array(); });
     var locMap = new Array(maxLength).fill(0);
     for (var i = 0; i < table.length; i++) {
         var t = table[i], isBlank = false;
-        if (finalTable[i] === undefined)
-            finalTable[i] = new Array();
         for (var j = 0; j < table[i].length; j++) {
             if (table[i][j] === undefined) {
                 if (i + 1 >= table.length)
@@ -1048,7 +1046,6 @@ var gen_final_table = function (table, tableClass) {
                     finalTable[locMap[j]].push({ rowSpan: 1, colSpan: table[i + 1][j].colSpan });
                 else if (tableClass === COLUM_TABLE)
                     finalTable[locMap[j]].push({ rowSpan: table[i + 1][j].rowSpan, colSpan: 1 });
-                // finalTable[locMap[j]].push({rowSpan: 1, colSpan: table[i+1][j].colSpan})
                 locMap[j]++;
             }
             else if (!table[i][j].isDelete) {
@@ -1063,7 +1060,6 @@ var gen_final_table = function (table, tableClass) {
                         finalTable[locMap[j]].push({ rowSpan: 1, colSpan: table[i][j].colSpan });
                     else if (tableClass === COLUM_TABLE)
                         finalTable[locMap[j]].push({ rowSpan: table[i][j].rowSpan, colSpan: 1 });
-                    // finalTable[locMap[j]].push({ rowSpan: 1, colSpan: table[i][j].colSpan})
                     locMap[j]++;
                 }
                 if (finalTable[locMap[j]] === undefined)
@@ -1073,7 +1069,6 @@ var gen_final_table = function (table, tableClass) {
                     locMap[j] += table[i][j].rowSpan;
                 else if (tableClass === COLUM_TABLE)
                     locMap[j] += table[i][j].colSpan;
-                // locMap[j] += table[i][j].rowSpan
             }
         }
     }
@@ -1096,12 +1091,12 @@ var gen_final_table = function (table, tableClass) {
 // generate matched value table
 var gen_valid_value_table = function (table, tableClass, idDict) {
     var rowLen = 0, rowRecord = new Array(table.length).fill(0);
-    var vvTable = Array.from({ length: table.length }, function () { return new Array(rowLen)
-        .fill(null).map(function (_) { return ({ rowSpan: 1, colSpan: 1 }); }); });
     for (var _i = 0, _a = table[0]; _i < _a.length; _i++) {
         var t = _a[_i];
         rowLen += t.colSpan;
     }
+    var vvTable = Array.from({ length: table.length }, function () { return new Array(rowLen)
+        .fill(null).map(function (_) { return ({ rowSpan: 1, colSpan: 1 }); }); });
     for (var i = 0; i < table.length; i++) {
         for (var j = 0; j < table[i].length; j++) {
             var tmp = table[i][j], loc = new Array(), id = tmp.sourceBlockId;
@@ -1210,6 +1205,7 @@ var gen_valid_value_table = function (table, tableClass, idDict) {
             _loop_3(j);
         }
     }
+    console.log('vv Table', util.inspect(vvTable, { showHidden: false, depth: null, colors: true }));
     var retTable = new Array(), pos = 0;
     for (var i = 0; i < vvTable.length; i++) {
         if (!retTable[pos])
@@ -1247,10 +1243,8 @@ var gen_valid_value_table = function (table, tableClass, idDict) {
         if (retTable[pos].length > 0)
             pos++;
     }
-    // const util = require('util');
-    // console.log('id dict', util.inspect(idDict, {showHidden: false, depth: null, colors: true}));
-    // console.log('vv Table', util.inspect(retTable, {showHidden: false, depth: null, colors: true}));
-    // console.log('vv Table', retTable);
+    // console.log('ret Table', util.inspect(retTable, {showHidden: false, depth: null, colors: true}));
+    // console.log('ret Table', retTable);
     return retTable;
 };
 var gen_styled_table = function (table, styles, idDict) {
@@ -1272,9 +1266,8 @@ var gen_styled_table = function (table, styles, idDict) {
             }
         }
     }
-    var util = require('util');
-    console.log('styled Table', util.inspect(retTable, { showHidden: false, depth: null, colors: true }));
-    // console.log('vv Table', retTable);
+    // console.log('styled Table', util.inspect(retTable, {showHidden: false, depth: null, colors: true}));
+    // console.log('styled Table', retTable);
     return retTable;
 };
 var table_process = function (tbClass, data, _a) {
@@ -1939,7 +1932,7 @@ var table_process = function (tbClass, data, _a) {
     finalTable = gen_valid_value_table(finalTable, tbClass, idDict);
     finalTable = gen_styled_table(finalTable, styles, idDict);
     console.log(rowDepth, colDepth, rowSize, colSize);
-    console.log(idDict);
+    // console.log(idDict);
     return finalTable;
 };
 var transform = function (task) {

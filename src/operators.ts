@@ -11,7 +11,7 @@ import {
   SelectorType
 } from "./types";
 import { deepAssign } from "./utils";
-
+// const util = require('util');
 
 // init style selector
 const style_selector_fill =  (bId, loc, styles: StyleClass, idDict) => {
@@ -802,7 +802,6 @@ const gen_blank_facet_table = (rawTable, header, info, depth, outerX,
 }
 
 const gen_final_table = (table, tableClass) => {
-  let finalTable = new Array()
   let h = 0, oldLen = table.length, maxLength = 0
   let spanList = new Array()
   for(let i=0; i<oldLen; i++) {
@@ -827,10 +826,10 @@ const gen_final_table = (table, tableClass) => {
       else if(tableClass === COLUM_TABLE) t.push({rowSpan: spanList[i+tmp], colSpan: 1})
     }
   }
+  let finalTable = Array.from({length:table.length}, () => new Array())
   let locMap = new Array(maxLength).fill(0)
   for(let i=0; i<table.length; i++) {
     let t = table[i], isBlank = false
-    if(finalTable[i] === undefined) finalTable[i] = new Array()
     for(let j=0; j<table[i].length; j++) {
       if(table[i][j] === undefined) {
         if(i+1 >= table.length) throw new Error("Final Table: Over Boundary")
@@ -842,11 +841,11 @@ const gen_final_table = (table, tableClass) => {
             finalTable[locMap[j]].push({ rowSpan: table[i+1][j].rowSpan, colSpan: 1})
           locMap[j]++
         }
+        if(finalTable[locMap[j]] === undefined) finalTable[locMap[j]] = new Array()
         if(tableClass === ROW_TABLE) 
           finalTable[locMap[j]].push({ rowSpan: 1, colSpan: table[i+1][j].colSpan})
         else if(tableClass === COLUM_TABLE) 
           finalTable[locMap[j]].push({ rowSpan: table[i+1][j].rowSpan, colSpan: 1})
-        // finalTable[locMap[j]].push({rowSpan: 1, colSpan: table[i+1][j].colSpan})
         locMap[j]++
       } else if(!table[i][j].isDelete){
         if(table[i][j].hasBlank) {
@@ -859,7 +858,6 @@ const gen_final_table = (table, tableClass) => {
             finalTable[locMap[j]].push({ rowSpan: 1, colSpan: table[i][j].colSpan})
           else if(tableClass === COLUM_TABLE) 
             finalTable[locMap[j]].push({ rowSpan: table[i][j].rowSpan, colSpan: 1})
-          // finalTable[locMap[j]].push({ rowSpan: 1, colSpan: table[i][j].colSpan})
           locMap[j]++
         }
         if(finalTable[locMap[j]] === undefined) finalTable[locMap[j]] = new Array()
@@ -868,7 +866,6 @@ const gen_final_table = (table, tableClass) => {
           locMap[j] += table[i][j].rowSpan
         else if(tableClass === COLUM_TABLE)
           locMap[j] += table[i][j].colSpan
-        // locMap[j] += table[i][j].rowSpan
       }
     }
   }
@@ -891,28 +888,30 @@ const gen_final_table = (table, tableClass) => {
 
 // generate matched value table
 const gen_valid_value_table = (table, tableClass, idDict) => {
-  let rowLen = 0, rowRecord = new Array(table.length).fill(0)
+  let rowLen = 0
+  for(let t of table[0]) rowLen += t.colSpan
   let vvTable = Array.from({length: table.length}, () => new Array(rowLen)
                 .fill(null).map(_ => ({rowSpan: 1, colSpan: 1}))) as any
+  let useRecord = Array.from({length: table.length}, () => new Array(rowLen).fill(false))
 
-  for(let t of table[0]) rowLen += t.colSpan 
   for(let i=0; i<table.length; i++) {
     for(let j=0; j<table[i].length; j++) {
-      let tmp = table[i][j], loc = new Array(), id = tmp.sourceBlockId
+      let tmp = table[i][j], loc = new Array(), id = tmp.sourceBlockId, fixJ = j
+      while(useRecord[i][fixJ]) fixJ++
       if(id) {
         if(idDict.rowDict[id]) idDict.rowDict[id].locList.push(i)
-        else if(idDict.colDict[id]) idDict.colDict[id].locList.push(rowRecord[i])
+        else if(idDict.colDict[id]) idDict.colDict[id].locList.push(fixJ)
       }
       for(let p=0; p<tmp.rowSpan; p++) {
         for(let q=0; q<tmp.colSpan; q++) {
-          loc.push({x: i+p, y: rowRecord[i+p]+q})
-          vvTable[i+p][rowRecord[i+p]+q] = {
+          loc.push({x: i+p, y: fixJ+q})
+          vvTable[i+p][fixJ+q] = {
             ...tmp,
             loc,
             isSkip: false,
           }
+          useRecord[i+p][fixJ+q] = true
         }
-        rowRecord[i+p] += tmp.colSpan
       } 
     }
   }
@@ -990,7 +989,8 @@ const gen_valid_value_table = (table, tableClass, idDict) => {
       }
     }
   }
-
+  // console.log('vv Table', util.inspect(vvTable, {showHidden: false, depth: null, colors: true}));
+  console.log('vv Table', vvTable);
   let retTable = new Array(), pos = 0 
   for(let i=0; i<vvTable.length; i++) {
     if(!retTable[pos]) retTable[pos] = new Array()
@@ -1020,9 +1020,8 @@ const gen_valid_value_table = (table, tableClass, idDict) => {
     }
     if(retTable[pos].length > 0) pos++
   }
-  // const util = require('util');
-  // console.log('vv Table', util.inspect(retTable, {showHidden: false, depth: null, colors: true}));
-  // console.log('vv Table', retTable);
+  // console.log('ret Table', util.inspect(retTable, {showHidden: false, depth: null, colors: true}));
+  // console.log('ret Table', retTable);
 
   return retTable
 }
@@ -1044,7 +1043,6 @@ const gen_styled_table = (table, styles, idDict) => {
       } 
     }
   }
-  // const util = require('util');
   // console.log('styled Table', util.inspect(retTable, {showHidden: false, depth: null, colors: true}));
   console.log('styled Table', retTable);
 
@@ -1680,7 +1678,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
   finalTable = gen_valid_value_table(finalTable, tbClass, idDict)
   finalTable = gen_styled_table(finalTable, styles, idDict)
   console.log(rowDepth, colDepth, rowSize, colSize);
-  console.log(idDict);
+  // console.log(idDict);
   return finalTable
 }
 

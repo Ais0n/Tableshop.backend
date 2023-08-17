@@ -214,6 +214,8 @@ let spec2 = {
   rowHeader: [{
     attrName: "continent",
     blockId: "11111",
+    gridMerge: "unmerged-first", //"merged" | "unmerged-first" | "unmerged-all"
+    facet: 2,
     children: [{
       attrName: "country",
       blockId: "22222",
@@ -221,27 +223,19 @@ let spec2 = {
   }],
   // rowHeader: [],
   // columnHeader: [{
-  //   // attrName: "year",
-  //   // blockId: "44444",
-  //   // children: [{
-  //   //   attrName: "season",
-  //   //   blockId: "55555",
-  //   //   entityMerge: false,
-  //   // }],
-  //   attrName: "continent",
-  //   blockId: "11111",
-  //   children: [{
-  //     attrName: "country",
-  //     blockId: "22222",
-  //   }],
+    // attrName: "year",
+    // blockId: "44444",
+    // children: [{
+    //   attrName: "season",
+    //   blockId: "55555",
+    //   entityMerge: false,
+    // }],
   // }],
   columnHeader: [],
   cell: [{
     attrName: "sales",
     rowParentId: "22222",
-    colParentId: "55555",
-    // rowParentId: "55555",
-    // colParentId: "22222",
+    // colParentId: "55555",
     blockId: "66666",
   }
   ],
@@ -349,7 +343,7 @@ let spec3 = {
 
 
 // tableShop.utils.transform({data, spec})
-let res = tableShop.utils.transform({ data, spec: spec })
+let res = tableShop.utils.transform({ data, spec: spec2 })
 
 
 // output
