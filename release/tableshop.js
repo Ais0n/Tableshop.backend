@@ -459,13 +459,12 @@ var get_header_id_dict = function (channel, depth) {
         var hb = channel_10[_i];
         var info = get_header_id_dict(hb.children, depth + 1);
         info[hb.blockId] = {
+            attrName: hb.attrName,
             hasBlank: hb.blankLine,
             gridMerge: hb.gridMerge,
             locList: new Array(),
             depth: depth,
             function: hb.function,
-            className: hb.className,
-            style: hb.style
         };
         res = deepAssign(res, info);
     }
@@ -481,16 +480,29 @@ var get_cell_id_dict = function (channel) {
         res[c.blockId] = {
             rowPId: c.rowParentId,
             colPId: c.columnParentId,
-            className: c.className,
-            style: c.style
         };
     }
     return res;
 };
-var get_cell_val = function (preVal, data, key) {
-    var res = new Array();
+var get_cell_head_is_valid = function (preVal, data) {
     for (var _i = 0, data_1 = data; _i < data_1.length; _i++) {
         var d = data_1[_i];
+        var flag = true;
+        for (var k in preVal) {
+            if (d[k] !== preVal[k]) {
+                flag = false;
+                break;
+            }
+        }
+        if (flag)
+            return true;
+    }
+    return false;
+};
+var get_cell_val = function (preVal, data, key) {
+    var res = new Array();
+    for (var _i = 0, data_2 = data; _i < data_2.length; _i++) {
+        var d = data_2[_i];
         var flag = true;
         for (var k in preVal) {
             if (d[k] !== preVal[k]) {
@@ -531,8 +543,8 @@ var aggregate_use = function (preVal, data, key, funcName) {
 };
 var aggregate_sum = function (preVal, data, key) {
     var ans = 0, cnt = 0;
-    for (var _i = 0, data_2 = data; _i < data_2.length; _i++) {
-        var d = data_2[_i];
+    for (var _i = 0, data_3 = data; _i < data_3.length; _i++) {
+        var d = data_3[_i];
         var flag = true;
         for (var k in preVal) {
             if (d[k] !== preVal[k]) {
@@ -1089,7 +1101,7 @@ var gen_final_table = function (table, tableClass) {
     return finalTable;
 };
 // generate matched value table
-var gen_valid_value_table = function (table, tableClass, idDict) {
+var gen_valid_value_table = function (table, tableClass, data, idDict) {
     var rowLen = 0;
     for (var _i = 0, _a = table[0]; _i < _a.length; _i++) {
         var t = _a[_i];
@@ -1122,10 +1134,24 @@ var gen_valid_value_table = function (table, tableClass, idDict) {
         var _loop_2 = function (i) {
             var hasHeader = false, hasCell = false, hasCellVal = false, hasBlank = false;
             var lastBlank = -1, lastBId = "";
+            var headSet = {}, keyList = new Array(), isHeadValid = false;
             for (var j = 0; j < rowLen; j++) {
                 var tmp = vvTable[i][j], id = tmp.sourceBlockId;
                 if (id && idDict.rowDict[id]) {
                     hasHeader = true;
+                    if (idDict.rowDict[id].attrName) {
+                        if (headSet[idDict.rowDict[id].attrName]) {
+                            if (get_cell_head_is_valid(headSet, data))
+                                isHeadValid = true;
+                            var tmpKey = keyList.pop();
+                            while (tmpKey !== idDict.rowDict[id].attrName) {
+                                delete headSet[tmpKey];
+                                tmpKey = keyList.pop();
+                            }
+                        }
+                        headSet[idDict.rowDict[id].attrName] = tmp.value;
+                        keyList.push(idDict.rowDict[id].attrName);
+                    }
                     if (idDict.rowDict[id].hasBlank) {
                         hasBlank = true;
                         lastBlank = j;
@@ -1138,7 +1164,9 @@ var gen_valid_value_table = function (table, tableClass, idDict) {
                         hasCellVal = true;
                 }
             }
-            if (hasHeader && hasCell && !hasCellVal) {
+            if (get_cell_head_is_valid(headSet, data))
+                isHeadValid = true;
+            if ((hasHeader && !hasCell && !isHeadValid) || (hasHeader && hasCell && !hasCellVal)) {
                 var dealBlank = false;
                 if (hasBlank) {
                     var res = idDict.rowDict[lastBId].locList.find(function (e) { return e === i; });
@@ -1167,10 +1195,24 @@ var gen_valid_value_table = function (table, tableClass, idDict) {
         var _loop_3 = function (j) {
             var hasHeader = false, hasCell = false, hasCellVal = false, hasBlank = false;
             var lastBlank = -1, lastBId = "";
+            var headSet = {}, keyList = new Array(), isHeadValid = false;
             for (var i = 0; i < vvTable.length; i++) {
                 var tmp = vvTable[i][j], id = tmp.sourceBlockId;
                 if (id && idDict.colDict[id]) {
                     hasHeader = true;
+                    if (idDict.colDict[id].attrName) {
+                        if (headSet[idDict.colDict[id].attrName]) {
+                            if (get_cell_head_is_valid(headSet, data))
+                                isHeadValid = true;
+                            var tmpKey = keyList.pop();
+                            while (tmpKey !== idDict.colDict[id].attrName) {
+                                delete headSet[tmpKey];
+                                tmpKey = keyList.pop();
+                            }
+                        }
+                        headSet[idDict.colDict[id].attrName] = tmp.value;
+                        keyList.push(idDict.colDict[id].attrName);
+                    }
                     if (idDict.colDict[id].hasBlank) {
                         hasBlank = true;
                         lastBlank = i;
@@ -1183,7 +1225,9 @@ var gen_valid_value_table = function (table, tableClass, idDict) {
                         hasCellVal = true;
                 }
             }
-            if (hasHeader && hasCell && !hasCellVal) {
+            if (get_cell_head_is_valid(headSet, data))
+                isHeadValid = true;
+            if ((hasHeader && !hasCell && !isHeadValid) || (hasHeader && hasCell && !hasCellVal)) {
                 var dealBlank = false;
                 if (hasBlank) {
                     var res = idDict.rowDict[lastBId].locList.find(function (e) { return e === j; });
@@ -1252,21 +1296,24 @@ var gen_valid_value_table = function (table, tableClass, idDict) {
     return retTable;
 };
 var gen_styled_table = function (table, styles, idDict) {
-    var rowLen = 0, rowRecord = new Array(table.length).fill(0);
-    var retTable = new Array();
+    var rowLen = 0, retTable = new Array();
     for (var _i = 0, _a = table[0]; _i < _a.length; _i++) {
         var t = _a[_i];
         rowLen += t.colSpan;
     }
+    var useRecord = Array.from({ length: table.length }, function () { return new Array(rowLen).fill(false); });
     for (var i = 0; i < table.length; i++) {
         retTable[i] = new Array();
         for (var j = 0; j < table[i].length; j++) {
-            var tmp = __assign({}, table[i][j]), id = tmp.sourceBlockId;
-            var loc = { x: i + 1, y: rowRecord[i] + 1 };
+            var tmp = __assign({}, table[i][j]), id = tmp.sourceBlockId, fixJ = j;
+            while (useRecord[i][fixJ])
+                fixJ++;
+            var loc = { x: i + 1, y: fixJ + 1 };
             tmp.style = style_process(deepAssign(style_selector_fill(id, loc, styles, idDict), tmp.style));
             retTable[i].push(tmp);
             for (var p = 0; p < tmp.rowSpan; p++) {
-                rowRecord[i + p] += tmp.colSpan;
+                for (var q = 0; q < tmp.colSpan; q++)
+                    useRecord[i + p][fixJ + q] = true;
             }
         }
     }
@@ -1933,10 +1980,10 @@ var table_process = function (tbClass, data, _a) {
         "colDict": get_header_id_dict(columnHeader),
         "cellDict": get_cell_id_dict(cell)
     };
-    finalTable = gen_valid_value_table(finalTable, tbClass, idDict);
+    finalTable = gen_valid_value_table(finalTable, tbClass, data.values, idDict);
     finalTable = gen_styled_table(finalTable, styles, idDict);
     console.log(rowDepth, colDepth, rowSize, colSize);
-    // console.log(idDict);
+    console.log(idDict);
     return finalTable;
 };
 var transform = function (task) {

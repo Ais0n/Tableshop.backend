@@ -314,14 +314,13 @@ const get_header_id_dict = (channel?: HeaderChannel, depth = 0) => {
   let res = {}
   for(let hb of channel) {
     let info = get_header_id_dict(hb.children, depth+1)
-    info[hb.blockId] = { 
+    info[hb.blockId] = {
+      attrName: hb.attrName,
       hasBlank: hb.blankLine, 
       gridMerge: hb.gridMerge,
       locList: new Array(),
       depth,
       function: hb.function,
-      className: hb.className,
-      style: hb.style
     } 
     res = deepAssign(res, info)
   }
@@ -336,11 +335,23 @@ const get_cell_id_dict = (channel?: CellChannel) => {
     res[c.blockId] = {
       rowPId: c.rowParentId,
       colPId: c.columnParentId,
-      className: c.className,
-      style: c.style
     }
   }
   return res
+}
+
+const get_cell_head_is_valid = (preVal, data) => {
+  for(let d of data) {
+    let flag = true
+    for(let k in preVal) {
+      if(d[k] !== preVal[k]) {
+        flag = false
+        break
+      }
+    }
+    if(flag) return true
+  }
+  return false
 }
 
 const get_cell_val = (preVal, data, key) => {
@@ -887,7 +898,7 @@ const gen_final_table = (table, tableClass) => {
 }
 
 // generate matched value table
-const gen_valid_value_table = (table, tableClass, idDict) => {
+const gen_valid_value_table = (table, tableClass, data, idDict) => {
   let rowLen = 0
   for(let t of table[0]) rowLen += t.colSpan
   let vvTable = Array.from({length: table.length}, () => new Array(rowLen)
@@ -919,10 +930,23 @@ const gen_valid_value_table = (table, tableClass, idDict) => {
     for(let i=0; i<vvTable.length; i++) {
       let hasHeader = false, hasCell = false, hasCellVal = false, hasBlank = false
       let lastBlank = -1,  lastBId = ""
+      let headSet = {}, keyList = new Array(), isHeadValid = false
       for(let j=0; j<rowLen; j++) {
         let tmp = vvTable[i][j], id = tmp.sourceBlockId
         if(id && idDict.rowDict[id]) {
           hasHeader = true
+          if(idDict.rowDict[id].attrName) {
+            if(headSet[idDict.rowDict[id].attrName]) {
+              if(get_cell_head_is_valid(headSet, data)) isHeadValid = true
+              let tmpKey = keyList.pop()
+              while(tmpKey !== idDict.rowDict[id].attrName) {
+                delete headSet[tmpKey]
+                tmpKey = keyList.pop()
+              }
+            }
+            headSet[idDict.rowDict[id].attrName] = tmp.value
+            keyList.push(idDict.rowDict[id].attrName)
+          }
           if(idDict.rowDict[id].hasBlank) {
             hasBlank = true
             lastBlank = j
@@ -934,7 +958,8 @@ const gen_valid_value_table = (table, tableClass, idDict) => {
           if(tmp.value) hasCellVal = true
         }
       }
-      if(hasHeader && hasCell && !hasCellVal) {
+      if(get_cell_head_is_valid(headSet, data)) isHeadValid = true
+      if((hasHeader && !hasCell && !isHeadValid) || (hasHeader && hasCell && !hasCellVal)) {
         let dealBlank = false 
         if(hasBlank) {
           let res = idDict.rowDict[lastBId].locList.find(e => e===i)
@@ -956,10 +981,23 @@ const gen_valid_value_table = (table, tableClass, idDict) => {
     for(let j=0; j<rowLen; j++){
       let hasHeader = false, hasCell = false, hasCellVal = false, hasBlank = false
       let lastBlank = -1,  lastBId = ""
+      let headSet = {}, keyList = new Array(), isHeadValid = false
       for(let i=0; i<vvTable.length; i++) {
         let tmp = vvTable[i][j], id = tmp.sourceBlockId
         if(id && idDict.colDict[id]) {
           hasHeader = true 
+          if(idDict.colDict[id].attrName) {
+            if(headSet[idDict.colDict[id].attrName]) {
+              if(get_cell_head_is_valid(headSet, data)) isHeadValid = true
+              let tmpKey = keyList.pop()
+              while(tmpKey !== idDict.colDict[id].attrName) {
+                delete headSet[tmpKey]
+                tmpKey = keyList.pop()
+              }
+            }
+            headSet[idDict.colDict[id].attrName] = tmp.value
+            keyList.push(idDict.colDict[id].attrName)
+          }
           if(idDict.colDict[id].hasBlank) {
             hasBlank = true
             lastBlank = i
@@ -971,7 +1009,8 @@ const gen_valid_value_table = (table, tableClass, idDict) => {
           if(tmp.value) hasCellVal = true
         }
       }
-      if(hasHeader && hasCell && !hasCellVal) {
+      if(get_cell_head_is_valid(headSet, data)) isHeadValid = true
+      if((hasHeader && !hasCell && !isHeadValid) || (hasHeader && hasCell && !hasCellVal)) {
         let dealBlank = false 
         if(hasBlank) {
           let res = idDict.rowDict[lastBId].locList.find(e => e===j)
@@ -1027,19 +1066,20 @@ const gen_valid_value_table = (table, tableClass, idDict) => {
 }
 
 const gen_styled_table = (table, styles, idDict) => {
-  let rowLen = 0, rowRecord = new Array(table.length).fill(0)
-  let retTable = new Array()
-
+  let rowLen = 0, retTable = new Array()
   for(let t of table[0]) rowLen += t.colSpan 
+  let useRecord = Array.from({length: table.length}, () => new Array(rowLen).fill(false))
+  
   for(let i=0; i<table.length; i++) {
     retTable[i] = new Array()
     for(let j=0; j<table[i].length; j++) {
-      let tmp = {...table[i][j]}, id = tmp.sourceBlockId
-      let loc = {x: i+1, y: rowRecord[i]+1}
+      let tmp = {...table[i][j]}, id = tmp.sourceBlockId, fixJ = j
+      while(useRecord[i][fixJ]) fixJ++
+      let loc = {x: i+1, y: fixJ+1}
       tmp.style = style_process(deepAssign(style_selector_fill(id, loc, styles, idDict), tmp.style))
       retTable[i].push(tmp)
       for(let p=0; p<tmp.rowSpan; p++) {
-        rowRecord[i+p] += tmp.colSpan
+        for(let q=0; q<tmp.colSpan; q++) useRecord[i+p][fixJ+q] = true
       } 
     }
   }
@@ -1675,10 +1715,10 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
     "colDict": get_header_id_dict(columnHeader),
     "cellDict": get_cell_id_dict(cell)
   }
-  finalTable = gen_valid_value_table(finalTable, tbClass, idDict)
+  finalTable = gen_valid_value_table(finalTable, tbClass, data.values, idDict)
   finalTable = gen_styled_table(finalTable, styles, idDict)
   console.log(rowDepth, colDepth, rowSize, colSize);
-  // console.log(idDict);
+  console.log(idDict);
   return finalTable
 }
 

@@ -232,13 +232,14 @@ let spec2 = {
     // }],
   // }],
   columnHeader: [],
-  cell: [{
-    attrName: "sales",
-    rowParentId: "22222",
-    // colParentId: "55555",
-    blockId: "66666",
-  }
-  ],
+  // cell: [{
+  //   attrName: "sales",
+  //   rowParentId: "22222",
+  //   // colParentId: "55555",
+  //   blockId: "66666",
+  // }
+  // ],
+  cell: [],
   attrInfo: [{
     name: "continent",
     dataType: "categorical",
@@ -281,42 +282,58 @@ let spec2 = {
 let spec3 = {
   rowHeader: [{
     attrName: "continent",
-    blockId: "44444",
-    entityMerge: false,
-    gridMerge: "merged", //"merged" | "unmerged-first" | "unmerged-all"
+    blockId: "11111",
+    // entityMerge: true,
+    gridMerge: "unmerged-all",//"merged" | "unmerged-first" | "unmerged-all"
     // facet: 2,
-    blankLine: true,
+    // blankLine: true,
     // key: {
     //   position: "left",
+    //   // position: "embedded",
+    //   pattern: "1",
+    //   isInherited: true
+    // },
+    children: [{
+      attrName: "country",
+      blockId: "22222",
+      entityMerge: false,
+      // blankLine: true,
+      // facet: 2,
+    }]
+    // }, {
+    //   function: "sum",
+    //   blockId: "33333",
+    //   entityMerge: false,
+    // }],
+  }],
+  columnHeader: [{
+    attrName: "year",
+    blockId: "44444",
+    entityMerge: false,
+    gridMerge: "unmerged-all",//"merged" | "unmerged-first" | "unmerged-all"
+    // facet: 2,
+    // blankLine: true,
+    // key: {
+    //   position: "top",
     //   // position: "embedded",
     //   pattern: "I",
     //   isInherited: true
     // },
     children: [{
-      attrName: "country",
+      attrName: "season",
       blockId: "55555",
       entityMerge: false,
-      blankLine: true,
-      // facet: 2,
-      // children: [{
-      //   attrName: "season",
-      //   blockId: "77777",
-      //   entityMerge: false,
-      // }]
-      // key: {
-      //   position: "right",
-      //   // position: "embedded",
-      //   pattern: "A",
-      //   isInherited: true
-      // },
+      // blankLine: true,
+
     }],
   }],
-  columnHeader: [],
-  cell: [{
-    attrName: "sales",
-    colParentId: "77777",
-    blockId: "66666",
-  }],
+  cell: [ 
+  // {
+  //   attrName: "crime",
+  //   rowParentId: "33333",
+  //   colParentId: "55555",
+  // }
+  ],
   attrInfo: [{
     name: "continent",
     dataType: "categorical",
@@ -343,7 +360,7 @@ let spec3 = {
 
 
 // tableShop.utils.transform({data, spec})
-let res = tableShop.utils.transform({ data, spec: spec2 })
+let res = tableShop.utils.transform({ data, spec: spec })
 
 
 // output
