@@ -100,9 +100,9 @@ const header_fill = (attrInfo: AttrInfo, styles: StyleClass, header?: HeaderChan
         continue
       }
       let attr = attrInfo.find((obj) => {
-        return obj.name == hb.attrName
-      })!
-      hb.values = hb.values ?? attr.values
+        return obj.name === hb.attrName
+      })
+      if(attr !== undefined) hb.values = hb.values ?? attr.values
       // if(hb.children && hb.children.length===0) hb.children = undefined
       header_fill(attrInfo, styles, hb.children)
     }
@@ -452,7 +452,7 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
         isKey: true,
         style: headerStyle
       }
-      extra.preVal[source] = rh.values[i]
+      if(source) extra.preVal[source] = rh.values[i]
       if(rh.entityMerge) {
         iterCount = gen_inter_row_table(interRowTable, rh.children, extra, width, depth, 
           outerX+innerX+1, bias, rh.entityMerge, key, keyBias)
@@ -587,7 +587,7 @@ const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: nu
         isKey: true,
         style: headerStyle
       }
-      extra.preVal[source] = ch.values[i]
+      if(source) extra.preVal[source] = ch.values[i]
       if(ch.entityMerge) {
         iterCount = gen_inter_column_table(interColumnTable, ch.children, extra, width, depth, 
           outerY+innerY+1, bias, ch.entityMerge, key, keyBias)

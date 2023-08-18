@@ -128,7 +128,7 @@ var deepAssign = function (target, source) {
     return target;
 };
 
-var util = require('util');
+// const util = require('util');
 // init style selector
 var style_selector_fill = function (bId, loc, styles, idDict) {
     if (!bId)
@@ -467,8 +467,6 @@ var get_header_id_dict = function (channel, depth) {
             locList: new Array(),
             depth: depth,
             function: hb.function,
-            // className: hb.className,
-            // style: hb.style
         };
         res = deepAssign(res, info);
     }
@@ -484,8 +482,6 @@ var get_cell_id_dict = function (channel) {
         res[c.blockId] = {
             rowPId: c.rowParentId,
             colPId: c.columnParentId,
-            // className: c.className,
-            // style: c.style
         };
     }
     return res;
@@ -1259,7 +1255,7 @@ var gen_valid_value_table = function (table, tableClass, data, idDict) {
         }
     }
     // console.log('vv Table', util.inspect(vvTable, {showHidden: false, depth: null, colors: true}));
-    // console.log('vv Table', vvTable);
+    console.log('vv Table', vvTable);
     var retTable = new Array(), pos = 0;
     for (var i = 0; i < vvTable.length; i++) {
         if (!retTable[pos])
@@ -1323,8 +1319,8 @@ var gen_styled_table = function (table, styles, idDict) {
             }
         }
     }
-    console.log('styled Table', util.inspect(retTable, { showHidden: false, depth: null, colors: true }));
-    // console.log('styled Table', retTable);
+    // console.log('styled Table', util.inspect(retTable, {showHidden: false, depth: null, colors: true}));
+    console.log('styled Table', retTable);
     return retTable;
 };
 var table_process = function (tbClass, data, _a) {

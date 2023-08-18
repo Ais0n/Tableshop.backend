@@ -358,9 +358,118 @@ let spec3 = {
   styles: undefined
 }
 
+let spec4 = {
+  "type": "block",
+  "rowHeader": [
+      {
+          "attrName": "continent",
+          "blockId": "01000098-0db5-4aad-851a-801e4bd3ac2b",
+          "channel": "row",
+          "entityMerge": false,
+          "gridMerge": "merged",
+          "facet": 1,
+          "blankLine": false,
+          "style": {},
+          "values": [
+              "Asia",
+              "Europe"
+          ]
+      }
+  ],
+  "columnHeader": [
+      {
+          "values": [
+              "continent"
+          ],
+          "blockId": "e3f03308-c1a8-48ca-8603-0eb3298a68ae",
+          "children": [],
+          "channel": "column",
+          "entityMerge": false,
+          "gridMerge": "merged",
+          "facet": 1,
+          "blankLine": false,
+          "style": {}
+      }
+  ],
+  "cell": [
+      {
+          "attrName": "sales",
+          "blockId": "a2831c82-6e56-4751-bbbd-1d3f3ebca0f6",
+          "rowParentId": "01000098-0db5-4aad-851a-801e4bd3ac2b",
+          "colParentId": "e3f03308-c1a8-48ca-8603-0eb3298a68ae",
+          "channel": "cell"
+      }
+  ],
+  "attrInfo": [
+      {
+          "name": "continent",
+          "values": [
+              "Asia",
+              "Europe"
+          ],
+          "dataType": "categorical"
+      },
+      {
+          "name": "country",
+          "values": [
+              "CHN",
+              "JPN",
+              "GBR",
+              "FRA"
+          ],
+          "dataType": "categorical"
+      },
+      {
+          "name": "year",
+          "values": [
+              "2019",
+              "2020",
+              "2021"
+          ],
+          "dataType": "categorical"
+      },
+      {
+          "name": "season",
+          "values": [
+              "spr",
+              "aut"
+          ],
+          "dataType": "categorical"
+      },
+      {
+          "name": "sales",
+          "values": [
+              105,
+              110,
+              120,
+              125,
+              131,
+              150,
+              60,
+              80,
+              82,
+              92,
+              95,
+              104,
+              112,
+              136,
+              59,
+              63,
+              72,
+              79,
+              86,
+              90
+          ],
+          "dataType": "numerical"
+      }
+  ],
+  "left": 256,
+  "top": 193,
+  "styles": {}
+}
 
 // tableShop.utils.transform({data, spec})
-let res = tableShop.utils.transform({ data, spec: spec })
+let res = tableShop.utils.transform({ data, spec: spec4 })
 
 
 // output
