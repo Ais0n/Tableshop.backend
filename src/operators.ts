@@ -10,7 +10,8 @@ import {
   interCell,
   SelectorType
 } from "./types";
-import { deepAssign } from "./utils";
+import { deepAssign, numToString, stringToNum } from "./utils";
+import { writeFileXLSX, utils } from "xlsx";
 // const util = require('util');
 
 // init style selector
@@ -1742,8 +1743,39 @@ const transform = (task: Spec) => {
     tableClass = COLUM_TABLE
   }
 
-
   return table_process(tableClass, data, {rowHeader, columnHeader, cell, attrInfo, styles})
 }
 
-export {spec_init, transform}
+const table2excel = ({table, url}) => {
+  let rowLen = 0
+  for(let t of table[0]) rowLen += t.colSpan
+  let formatTable = Array.from({length: table.length}, () => new Array(rowLen))
+  let useRecord = Array.from({length: table.length}, () => new Array(rowLen).fill(false))
+  let wb = utils.book_new(), merges = new Array()
+
+  for(let i=0; i<table.length; i++) {
+    for(let j=0; j<table[i].length; j++) {
+      let tmp = table[i][j], fixJ = j
+      while(useRecord[i][fixJ]) fixJ++
+      formatTable[i][fixJ] = tmp.value
+      for(let p=0; p<tmp.rowSpan; p++) {
+        for(let q=0; q<tmp.colSpan; q++) {
+          // formatTable[i+p][fixJ+q] = tmp.value
+          useRecord[i+p][fixJ+q] = true
+        }
+      }
+      if(tmp.rowSpan>1 || tmp.colSpan>1) {
+        merges.push({
+          s: { r: i, c: fixJ },
+          e: { r: i+tmp.rowSpan-1, c: fixJ+tmp.colSpan-1 }
+        });
+      } 
+    }
+  }
+  let sheet = utils.aoa_to_sheet(formatTable)
+  sheet['!merges'] = merges
+  utils.book_append_sheet(wb, sheet, 'TableShop Output')
+  writeFileXLSX(wb, url+'.xlsx')
+}
+
+export {spec_init, transform, table2excel}

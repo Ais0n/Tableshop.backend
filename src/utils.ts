@@ -37,3 +37,29 @@ export const deepAssign = (target, source) => {
   }
   return target;
 }
+
+export const numToString = (num: number): string => {
+  let str = "";
+  while (num > 0) {
+    let rem = num % 26;
+    let quo = Math.floor(num / 26);
+    if (rem == 0) {
+      rem = 26;
+      quo--;
+    }
+    str = String.fromCharCode(rem + 64) + str;
+    num = quo;
+  }
+  return str;
+}
+
+// 将字母转换为数字
+export const stringToNum = (str) => {
+  let num = 0;
+  for (let i = 0; i < str.length; i++) {
+    let char = str[i];
+    let val = char.charCodeAt() - 64;
+    num = num * 26 + val;
+  }
+  return num;
+}

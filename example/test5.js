@@ -468,12 +468,13 @@ let spec4 = {
   "styles": {}
 }
 
-// tableShop.utils.transform({data, spec})
-let res = tableShop.utils.transform({ data, spec: spec4 })
+let table = tableShop.utils.transform({ data, spec: spec4 })
+let url = "out"
+// tableShop.utils.table2excel({table, url})
 
 
 // output
-[
+let output = [
   [
     {
       "rowSpan": 2,
