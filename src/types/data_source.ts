@@ -109,6 +109,8 @@ export interface HeaderBlock {
   gridMerge?: GridMerge;
   // expand?: boolean;
   facet?: number;
+  facetMerge?: boolean,
+  facetEnd?: boolean,
   blankLine?: boolean;
   style?: StyleClass;
   values?: string[] | number[];
@@ -119,7 +121,7 @@ export interface CellBlock {
   attrName: string;
   blockId: string;
   rowParentId?: string;
-  columnParentId?: string;
+  colParentId?: string;
   className?: string;
   style?: StyleClass; 
 }

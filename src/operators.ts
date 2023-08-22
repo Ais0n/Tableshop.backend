@@ -90,6 +90,8 @@ const header_fill = (attrInfo: AttrInfo, styles: StyleClass, header?: HeaderChan
       hb.entityMerge = hb.entityMerge ?? false
       hb.gridMerge = hb.gridMerge ?? GridMerge.Merged
       hb.facet = hb.facet ?? 1
+      hb.facetMerge = hb.facetMerge ?? true 
+      hb.facetEnd = hb.facetEnd ?? false
       hb.blankLine = hb.blankLine ?? false 
       if(hb.key && Object.keys(hb.key).length === 0) hb.key = undefined
       let headerStyle = hb.className ? deepAssign({}, styles[hb.className]) : {}
@@ -310,18 +312,21 @@ const get_header_is_facet = (channel?: HeaderChannel) => {
 }
 
 // get all header blockId and blankLine info
-const get_header_id_dict = (channel?: HeaderChannel, depth = 0) => {
+const get_header_id_dict = (channel?: HeaderChannel, depth = 0, preFEnd = false) => {
   if (!channel || channel.length == 0) return {}
   let res = {}
   for(let hb of channel) {
-    let info = get_header_id_dict(hb.children, depth+1)
+    let facetEnd = preFEnd ? true : hb.facetEnd
+    let info = get_header_id_dict(hb.children, depth+1, facetEnd)
     info[hb.blockId] = {
       attrName: hb.attrName,
+      function: hb.function,
       hasBlank: hb.blankLine, 
       gridMerge: hb.gridMerge,
       locList: new Array(),
       depth,
-      function: hb.function,
+      facetMerge: hb.facetMerge,
+      facetEnd,
     } 
     res = deepAssign(res, info)
   }
@@ -335,7 +340,7 @@ const get_cell_id_dict = (channel?: CellChannel) => {
   for(let c of channel) {
     res[c.blockId] = {
       rowPId: c.rowParentId,
-      colPId: c.columnParentId,
+      colPId: c.colParentId,
     }
   }
   return res
@@ -1066,6 +1071,100 @@ const gen_valid_value_table = (table, tableClass, data, idDict) => {
   return retTable
 }
 
+const gen_facet_ME_table = (table, tbClass, idDict) => {
+  if(tbClass === CROSS_TABLE) return table
+  let rowLen = 0
+  for(let t of table[0]) rowLen += t.colSpan
+  let formatTable = Array.from({length: table.length}, () => new Array(rowLen)
+                    .fill(null).map(_ => ({rowSpan: 1, colSpan: 1}))) as any
+  let useRecord = Array.from({length: table.length}, () => new Array(rowLen).fill(false))
+
+  for(let i=0; i<table.length; i++) {
+    for(let j=0; j<table[i].length; j++) {
+      let tmp = table[i][j], fixJ = j
+      while(useRecord[i][fixJ]) fixJ++
+      for(let p=0; p<tmp.rowSpan; p++) {
+        for(let q=0; q<tmp.colSpan; q++) {
+          formatTable[i+p][fixJ+q] = {
+            ...tmp,
+            isSkip: (p===0 && q===0) ? false : true,
+          }
+          useRecord[i+p][fixJ+q] = true
+        }
+      }
+    }
+  }
+
+  for(let i=0; i<formatTable.length; i++) {
+    for(let j=0; j<formatTable[i].length; j++) {
+      let tmp = formatTable[i][j]
+      let value = tmp.value, id = tmp.sourceBlockId
+      if(tbClass === ROW_TABLE) {
+        let bias = tmp.rowSpan
+        if(!tmp.skip && id) {
+          let rInfo = idDict.rowDict[id]
+          if(rInfo && rInfo.facetMerge) {
+            while(i+bias<formatTable.length && value===formatTable[i+bias][j].value && 
+              id===formatTable[i+bias][j].sourceBlockId) {
+              tmp.rowSpan += formatTable[i+bias][j].rowSpan
+              for(let k=0; k<formatTable[i+bias][j].rowSpan; k++)
+                formatTable[i+bias+k][j].isSkip = true
+              bias += formatTable[i+bias][j].rowSpan
+            }
+          }
+          let ceInfo = idDict.cellDict[id]
+          if((rInfo && rInfo.facetEnd) || (ceInfo && idDict.rowDict[ceInfo.rowPId].facetEnd)) {
+            while(i+bias<formatTable.length && !formatTable[i+bias][j].value) {
+              tmp.rowSpan += formatTable[i+bias][j].rowSpan
+              for(let k=0; k<formatTable[i+bias][j].rowSpan; k++)
+                formatTable[i+bias+k][j].isSkip = true
+              bias += formatTable[i+bias][j].rowSpan
+            }
+          }
+        }
+      } else if(tbClass === COLUM_TABLE) {
+        let bias = tmp.colSpan
+        if(!tmp.skip && id) {
+          let cInfo = idDict.colDict[id]
+          if(cInfo && cInfo.facetMerge) {
+            while(j+bias<formatTable[i].length && value===formatTable[i][j+bias].value && 
+              id===formatTable[i][j+bias].sourceBlockId) {
+              tmp.colSpan += formatTable[i][j+bias].colSpan
+              for(let k=0; k<formatTable[i][j+bias].colSpan; k++)
+                formatTable[i][j+bias+k].isSkip = true
+              bias += formatTable[i][j+bias].colSpan
+            }
+          }
+          let ceInfo = idDict.cellDict[id]
+          if((cInfo && cInfo.facetEnd) || (ceInfo && idDict.colDict[ceInfo.colPId].facetEnd)) {
+            while(j+bias<formatTable[i].length && !formatTable[i][j+bias].value) {
+              tmp.colSpan += formatTable[i][j+bias].colSpan
+              for(let k=0; k<formatTable[i][j+bias].colSpan; k++)
+                formatTable[i][j+bias+k].isSkip = true
+              bias += formatTable[i][j+bias].colSpan
+            }
+          }
+        }
+      }
+    }
+  }
+
+  let retTable = new Array()
+  for(let i=0; i<formatTable.length; i++) {
+    retTable[i] = new Array()
+    for(let j=0; j<formatTable[i].length; j++) {
+      let tmp = {...formatTable[i][j]}
+      if(!tmp.isSkip) {
+        delete tmp.isSkip
+        retTable[i].push(tmp)
+      }
+    }
+  }
+
+  console.log('meTable', retTable);
+  return retTable
+}
+
 const gen_styled_table = (table, styles, idDict) => {
   let rowLen = 0, retTable = new Array()
   for(let t of table[0]) rowLen += t.colSpan 
@@ -1717,6 +1816,12 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
     "cellDict": get_cell_id_dict(cell)
   }
   finalTable = gen_valid_value_table(finalTable, tbClass, data.values, idDict)
+  let actTBClass = tbClass
+  if(tbClass === CROSS_TABLE) {
+    if(get_header_is_facet(rowHeader)) actTBClass = ROW_TABLE
+    else if(get_header_is_facet(columnHeader)) actTBClass = COLUM_TABLE
+  }
+  finalTable = gen_facet_ME_table(finalTable, actTBClass, idDict)
   finalTable = gen_styled_table(finalTable, styles, idDict)
   console.log(rowDepth, colDepth, rowSize, colSize);
   console.log(idDict);
