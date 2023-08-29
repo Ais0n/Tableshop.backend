@@ -1,3 +1,4 @@
+import { title } from "process";
 import {
   Spec, SourceTable, SingleTable,
   AttrInfoUnit, AttrInfo, DataType,
@@ -16,7 +17,7 @@ import { read, writeFileXLSX, utils } from "xlsx";
 
 // init style selector
 const style_selector_fill =  (bId, loc, styles: StyleClass, idDict) => {
-  if(!bId) bId = "undefined"
+  if(!bId) bId = "@__undefined"
   let res = {}
   for(let sel in styles) {
     if(sel === SelectorType.TABLE) {
@@ -24,15 +25,21 @@ const style_selector_fill =  (bId, loc, styles: StyleClass, idDict) => {
 
     } else if(sel === SelectorType.HEADER) {
       if(idDict.rowDict[bId] || idDict.colDict[bId]) res = deepAssign(res, styles[sel])
+      else if(bId==="@__undefined" && loc.x===1 && loc.y===1) res = deepAssign(res, styles[sel])
 
     } else if(sel === SelectorType.ROW_HEADER) {
       if(idDict.rowDict[bId]) res = deepAssign(res, styles[sel])
+      else if(bId==="@__undefined" && loc.x===1 && loc.y===1) res = deepAssign(res, styles[sel])
 
     } else if(sel === SelectorType.COL_HEADER) {
       if(idDict.colDict[bId]) res = deepAssign(res, styles[sel])
+      else if(bId==="@__undefined" && loc.x===1 && loc.y===1) res = deepAssign(res, styles[sel])
 
     } else if(sel === SelectorType.CELL) {
       if(idDict.cellDict[bId]) res = deepAssign(res, styles[sel])
+
+    } else if(sel === SelectorType.TITLE) {
+      if(bId==="@__undefined" && loc.x===1 && loc.y===1) res = deepAssign(res, styles[sel])
 
     } else if(sel.startsWith(SelectorType.ROW_H_LEVEL)) {
       let depth = parseInt(sel.slice(3)) - 1
@@ -93,6 +100,7 @@ const header_fill = (attrInfo: AttrInfo, styles: StyleClass, header?: HeaderChan
       hb.facetMerge = hb.facetMerge ?? true 
       hb.facetEnd = hb.facetEnd ?? false
       hb.blankLine = hb.blankLine ?? false 
+      if(hb.title === "") hb.title = hb.attrName
       if(hb.key && Object.keys(hb.key).length === 0) hb.key = undefined
       let headerStyle = hb.className ? deepAssign({}, styles[hb.className]) : {}
       if(!hb.style || Object.keys(hb.style).length===0) hb.style = {}
@@ -312,12 +320,12 @@ const get_header_is_facet = (channel?: HeaderChannel) => {
 }
 
 // get all header blockId and blankLine info
-const get_header_id_dict = (channel?: HeaderChannel, depth = 0, preFEnd = false) => {
+const get_header_id_dict = (channel?: HeaderChannel, title?, depth = 0, preFEnd = false) => {
   if (!channel || channel.length == 0) return {}
   let res = {}
   for(let hb of channel) {
     let facetEnd = preFEnd ? true : hb.facetEnd
-    let info = get_header_id_dict(hb.children, depth+1, facetEnd)
+    let info = get_header_id_dict(hb.children, title, depth+1, facetEnd)
     info[hb.blockId] = {
       attrName: hb.attrName,
       function: hb.function,
@@ -328,6 +336,8 @@ const get_header_id_dict = (channel?: HeaderChannel, depth = 0, preFEnd = false)
       facetMerge: hb.facetMerge,
       facetEnd,
     } 
+    if(title[depth] === undefined) title[depth] = new Array()
+    if(hb.title !== undefined) title[depth].push(hb.title)
     res = deepAssign(res, info)
   }
   return res
@@ -1176,6 +1186,8 @@ const gen_styled_table = (table, styles, idDict) => {
       let tmp = {...table[i][j]}, id = tmp.sourceBlockId, fixJ = j
       while(useRecord[i][fixJ]) fixJ++
       let loc = {x: i+1, y: fixJ+1}
+      if(i===0 && fixJ===0 && tmp.value===undefined 
+        && idDict.titleInfo.title!=="") tmp.value = idDict.titleInfo.title
       tmp.style = style_process(deepAssign(style_selector_fill(id, loc, styles, idDict), tmp.style))
       retTable[i].push(tmp)
       for(let p=0; p<tmp.rowSpan; p++) {
@@ -1810,11 +1822,25 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
     }
   }
 
-  let idDict = {
-    "rowDict": get_header_id_dict(rowHeader),
-    "colDict": get_header_id_dict(columnHeader),
-    "cellDict": get_cell_id_dict(cell)
+  let titleInfo = {
+    row: new Array(),
+    col: new Array(),
+    tList: new Array(),
+    title: "",
   }
+  let idDict = {
+    rowDict: get_header_id_dict(rowHeader, titleInfo.row),
+    colDict: get_header_id_dict(columnHeader, titleInfo.col),
+    cellDict: get_cell_id_dict(cell),
+    titleInfo,
+  }
+  let rTitle = new Array(), cTitle = new Array()
+  for(let rt of idDict.titleInfo.row) if(rt.length>0) rTitle.push(rt.join("|"))
+  for(let ct of idDict.titleInfo.col) if(ct.length>0) cTitle.push(ct.join("|"))
+  if(rTitle.length>0) titleInfo.tList.push(rTitle.join("-"))
+  if(cTitle.length>0) titleInfo.tList.push(cTitle.join("-"))
+  titleInfo.title = titleInfo.tList.join("/")
+  
   finalTable = gen_valid_value_table(finalTable, tbClass, data.values, idDict)
   let actTBClass = tbClass
   if(tbClass === CROSS_TABLE) {

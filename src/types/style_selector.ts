@@ -5,6 +5,7 @@ export enum SelectorType {
   ROW_HEADER = ".rowHeader",
   COL_HEADER = ".columnHeader",
   CELL = ".cell",
+  TITLE = ".title",
   ROW_H_LEVEL = ".rl",
   COL_H_LEVEL = ".cl",
   // line level selector

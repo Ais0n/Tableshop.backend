@@ -111,6 +111,7 @@ export interface HeaderBlock {
   facet?: number;
   facetMerge?: boolean,
   facetEnd?: boolean,
+  title?: string,
   blankLine?: boolean;
   style?: StyleClass;
   values?: string[] | number[];

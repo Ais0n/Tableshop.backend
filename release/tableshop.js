@@ -136,6 +136,7 @@ var SelectorType;
     SelectorType["ROW_HEADER"] = ".rowHeader";
     SelectorType["COL_HEADER"] = ".columnHeader";
     SelectorType["CELL"] = ".cell";
+    SelectorType["TITLE"] = ".title";
     SelectorType["ROW_H_LEVEL"] = ".rl";
     SelectorType["COL_H_LEVEL"] = ".cl";
     // line level selector
@@ -22297,7 +22298,7 @@ var utils$1/*:any*/ = {
 // init style selector
 var style_selector_fill = function (bId, loc, styles, idDict) {
     if (!bId)
-        bId = "undefined";
+        bId = "@__undefined";
     var res = {};
     for (var sel in styles) {
         if (sel === SelectorType.TABLE) {
@@ -22306,17 +22307,27 @@ var style_selector_fill = function (bId, loc, styles, idDict) {
         else if (sel === SelectorType.HEADER) {
             if (idDict.rowDict[bId] || idDict.colDict[bId])
                 res = deepAssign(res, styles[sel]);
+            else if (bId === "@__undefined" && loc.x === 1 && loc.y === 1)
+                res = deepAssign(res, styles[sel]);
         }
         else if (sel === SelectorType.ROW_HEADER) {
             if (idDict.rowDict[bId])
+                res = deepAssign(res, styles[sel]);
+            else if (bId === "@__undefined" && loc.x === 1 && loc.y === 1)
                 res = deepAssign(res, styles[sel]);
         }
         else if (sel === SelectorType.COL_HEADER) {
             if (idDict.colDict[bId])
                 res = deepAssign(res, styles[sel]);
+            else if (bId === "@__undefined" && loc.x === 1 && loc.y === 1)
+                res = deepAssign(res, styles[sel]);
         }
         else if (sel === SelectorType.CELL) {
             if (idDict.cellDict[bId])
+                res = deepAssign(res, styles[sel]);
+        }
+        else if (sel === SelectorType.TITLE) {
+            if (bId === "@__undefined" && loc.x === 1 && loc.y === 1)
                 res = deepAssign(res, styles[sel]);
         }
         else if (sel.startsWith(SelectorType.ROW_H_LEVEL)) {
@@ -22389,6 +22400,8 @@ var header_fill = function (attrInfo, styles, header) {
             hb.facetMerge = (_d = hb.facetMerge) !== null && _d !== void 0 ? _d : true;
             hb.facetEnd = (_e = hb.facetEnd) !== null && _e !== void 0 ? _e : false;
             hb.blankLine = (_f = hb.blankLine) !== null && _f !== void 0 ? _f : false;
+            if (hb.title === "")
+                hb.title = hb.attrName;
             if (hb.key && Object.keys(hb.key).length === 0)
                 hb.key = undefined;
             var headerStyle = hb.className ? deepAssign({}, styles[hb.className]) : {};
@@ -22620,7 +22633,7 @@ var get_header_is_facet = function (channel) {
     return false;
 };
 // get all header blockId and blankLine info
-var get_header_id_dict = function (channel, depth, preFEnd) {
+var get_header_id_dict = function (channel, title, depth, preFEnd) {
     if (depth === void 0) { depth = 0; }
     if (preFEnd === void 0) { preFEnd = false; }
     if (!channel || channel.length == 0)
@@ -22629,7 +22642,7 @@ var get_header_id_dict = function (channel, depth, preFEnd) {
     for (var _i = 0, channel_10 = channel; _i < channel_10.length; _i++) {
         var hb = channel_10[_i];
         var facetEnd = preFEnd ? true : hb.facetEnd;
-        var info = get_header_id_dict(hb.children, depth + 1, facetEnd);
+        var info = get_header_id_dict(hb.children, title, depth + 1, facetEnd);
         info[hb.blockId] = {
             attrName: hb.attrName,
             function: hb.function,
@@ -22640,6 +22653,10 @@ var get_header_id_dict = function (channel, depth, preFEnd) {
             facetMerge: hb.facetMerge,
             facetEnd: facetEnd,
         };
+        if (title[depth] === undefined)
+            title[depth] = new Array();
+        if (hb.title !== undefined)
+            title[depth].push(hb.title);
         res = deepAssign(res, info);
     }
     return res;
@@ -23577,6 +23594,9 @@ var gen_styled_table = function (table, styles, idDict) {
             while (useRecord[i][fixJ])
                 fixJ++;
             var loc = { x: i + 1, y: fixJ + 1 };
+            if (i === 0 && fixJ === 0 && tmp.value === undefined
+                && idDict.titleInfo.title !== "")
+                tmp.value = idDict.titleInfo.title;
             tmp.style = style_process(deepAssign(style_selector_fill(id, loc, styles, idDict), tmp.style));
             retTable[i].push(tmp);
             for (var p = 0; p < tmp.rowSpan; p++) {
@@ -24243,11 +24263,34 @@ var table_process = function (tbClass, data, _a) {
             console.log('final cross', finalTable);
         }
     }
-    var idDict = {
-        "rowDict": get_header_id_dict(rowHeader),
-        "colDict": get_header_id_dict(columnHeader),
-        "cellDict": get_cell_id_dict(cell)
+    var titleInfo = {
+        row: new Array(),
+        col: new Array(),
+        tList: new Array(),
+        title: "",
     };
+    var idDict = {
+        rowDict: get_header_id_dict(rowHeader, titleInfo.row),
+        colDict: get_header_id_dict(columnHeader, titleInfo.col),
+        cellDict: get_cell_id_dict(cell),
+        titleInfo: titleInfo,
+    };
+    var rTitle = new Array(), cTitle = new Array();
+    for (var _j = 0, _k = idDict.titleInfo.row; _j < _k.length; _j++) {
+        var rt = _k[_j];
+        if (rt.length > 0)
+            rTitle.push(rt.join("|"));
+    }
+    for (var _l = 0, _m = idDict.titleInfo.col; _l < _m.length; _l++) {
+        var ct = _m[_l];
+        if (ct.length > 0)
+            cTitle.push(ct.join("|"));
+    }
+    if (rTitle.length > 0)
+        titleInfo.tList.push(rTitle.join("-"));
+    if (cTitle.length > 0)
+        titleInfo.tList.push(cTitle.join("-"));
+    titleInfo.title = titleInfo.tList.join("/");
     finalTable = gen_valid_value_table(finalTable, tbClass, data.values, idDict);
     var actTBClass = tbClass;
     if (tbClass === CROSS_TABLE) {
