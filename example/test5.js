@@ -468,8 +468,9 @@ let spec4 = {
   "styles": {}
 }
 
-let table = tableShop.utils.transform({ data, spec: spec4 })
-let url = "out"
+// let table = tableShop.utils.transform({ data, spec: spec4 })
+let url = "/"
+tableShop.utils.parseTable(url, "cc")
 // tableShop.utils.table2excel({table, url})
 
 

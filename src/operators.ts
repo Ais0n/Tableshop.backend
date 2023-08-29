@@ -10,8 +10,8 @@ import {
   interCell,
   SelectorType
 } from "./types";
-import { deepAssign, numToString, stringToNum } from "./utils";
-import { writeFileXLSX, utils } from "xlsx";
+import { deepAssign, genBid } from "./utils";
+import { read, writeFileXLSX, utils } from "xlsx";
 // const util = require('util');
 
 // init style selector
@@ -1883,4 +1883,171 @@ const table2excel = ({table, url}) => {
   writeFileXLSX(wb, url+'.xlsx')
 }
 
-export {spec_init, transform, table2excel}
+const fill_header_spec = (val, extra, depth=0) => {
+  if(val[depth]===undefined) return undefined
+  let spec = {
+    blockId: genBid(),
+    values: new Array(),
+    children: new Array()
+  }
+  extra.pId = spec.blockId
+  for(let v in val[depth]) spec.values.push(v)
+  let cSpec = fill_header_spec(val, extra, depth+1)
+  if(cSpec !== undefined) spec.children.push(cSpec)
+  return spec
+}
+
+const parseTable = async (url, mode) => {
+  let file = await (await fetch(url)).arrayBuffer()
+  let wb = read(file), ws = wb.Sheets[wb.SheetNames[0]]
+  console.log("workBook", wb)
+  console.log("workSheet", ws)
+  let data = utils.sheet_to_json(ws, {header: 1}) as any
+  console.log("Raw Data", data);
+  if(data.length === 0) return {}
+  let spec = {
+    rowHeader: new Array(),
+    columnHeader: new Array(),
+    cell: new Array(),
+  } 
+  if(mode === "crosstab") {
+    let rowDepth = 1, colDepth = 0
+    let cLen = 0, rLen = data.length
+    for(let d of data) if(cLen < d.length) cLen = d.length
+    if(data[0][0] === undefined) {
+      let tmpR = 0, tmpC = 0
+      for(let i=0; i<rLen; i++) {
+        if(data[0][i] !== undefined) break
+        tmpR++
+      }
+      for(let i=0; i<cLen; i++) {
+        if(data[i][0] !== undefined) break
+        tmpC++
+      }
+      rowDepth = tmpR, colDepth = tmpC
+    } else {
+      if(ws["!merges"]) {
+        for(let {s, e} of ws["!merges"]) {
+          if(s.r===0 && s.c===0) {
+            rowDepth = e.c 
+            colDepth = e.r
+            break
+          }
+        }
+      }
+    }
+    let rowVal = new Array(), colVal = new Array()
+    for(let j=0; j<rowDepth; j++) {
+      rowVal[j] = {}
+      for(let i=colDepth; i<rLen; i++) {
+        if(data[i][j]) rowVal[j][data[i][j]] = data[i][j]
+      }
+    }
+    for(let i=0; i<colDepth; i++) {
+      colVal[i] = {}
+      for(let j=rowDepth; j<rLen; j++) {
+        if(data[i][j]) colVal[i][data[i][j]] = data[i][j]
+      }
+    }
+    let extraR = {pId: undefined}, extraC = {pId: undefined}
+    let rh = fill_header_spec(rowVal, extraR), ch = fill_header_spec(colVal, extraC)
+    if(rh !== undefined) spec.rowHeader.push(rh)
+    if(ch !== undefined) spec.columnHeader.push(ch)
+    let c = {
+      blockId: genBid(),
+      rowParentId: extraR.pId,
+      colParentId: extraC.pId,
+      dataType: DataType.CATEGORICAL,
+      values: new Array()
+    }
+    for(let i=colDepth; i<rLen; i++) {
+      for(let j=rowDepth; j<cLen; j++) {
+        if(!isNaN(Number(data[i][j]))) {
+          c.dataType = DataType.NUMERICAL
+          c.values.push(Number(data[i][j]))
+        } else {
+          if(data[i][j]) c.values.push(data[i][j])
+        }
+      }
+    }
+    if(extraR.pId!==undefined || extraC.pId!==undefined) spec.cell.push(c)
+  } else if(mode === "relational") {
+    let rowDepth = 0, colDepth = 1
+    let cLen = 0, rLen = data.length
+    for(let d of data) if(cLen < d.length) cLen = d.length
+    if(ws["!merges"]) {
+      for(let {s, e} of ws["!merges"]) {
+        if(s.r===0 && s.c===0) {
+          colDepth = e.r
+          break
+        }
+      }
+    }
+    if(data[0][0] === undefined) {
+      let tmpR = 0
+      for(let i=0; i<rLen; i++) {
+        if(data[0][i] !== undefined) break
+        tmpR++
+      } 
+      rowDepth = tmpR
+    } else {
+      rowDepth = cLen
+      for(let j=0; j<cLen; j++) {
+        let tmpDict = {} as any, flag = true
+        for(let i=colDepth; i<rLen; i++) {
+          if(tmpDict[data[i][j]]) {
+            flag = false
+            break
+          }
+          tmpDict[data[i][j]] = data[i][j]
+        }
+        if(flag) {
+          rowDepth = j
+          break
+        }
+      }
+    }
+    let rowVal = new Array(), colVal = new Array()
+    for(let j=0; j<rowDepth; j++) {
+      rowVal[j] = {}
+      for(let i=colDepth; i<rLen; i++) {
+        if(data[i][j]) rowVal[j][data[i][j]] = data[i][j]
+      }
+    }
+    for(let i=0; i<colDepth; i++) {
+      colVal[i] = {}
+      for(let j=rowDepth; j<rLen; j++) {
+        if(data[i][j]) colVal[i][data[i][j]] = data[i][j]
+      }
+    }
+    console.log('object', rowVal, colVal);
+    let extraR = {pId: undefined}, extraC = {pId: undefined}
+    let rh = fill_header_spec(rowVal, extraR), ch = fill_header_spec(colVal, extraC)
+    if(rh !== undefined) spec.rowHeader.push(rh)
+    if(ch !== undefined) spec.columnHeader.push(ch)
+    
+    for(let j=rowDepth; j<cLen; j++) {
+      let c = {
+        blockId: genBid(),
+        rowParentId: extraR.pId,
+        colParentId: extraC.pId,
+        dataType: DataType.CATEGORICAL,
+        values: new Array()
+      }
+      for(let i=colDepth; i<rLen; i++) {
+        if(!isNaN(Number(data[i][j]))) {
+          c.dataType = DataType.NUMERICAL
+          c.values.push(Number(data[i][j]))
+        } else {
+          if(data[i][j]) c.values.push(data[i][j])
+        }
+      }
+      if(extraR.pId!==undefined || extraC.pId!==undefined) spec.cell.push(c)
+    }
+    
+    console.log('hd', spec);
+  }
+  return spec
+}
+
+export {spec_init, transform, table2excel, parseTable}

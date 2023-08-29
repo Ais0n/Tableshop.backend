@@ -53,7 +53,6 @@ export const numToString = (num: number): string => {
   return str;
 }
 
-// 将字母转换为数字
 export const stringToNum = (str) => {
   let num = 0;
   for (let i = 0; i < str.length; i++) {
@@ -62,4 +61,12 @@ export const stringToNum = (str) => {
     num = num * 26 + val;
   }
   return num;
+}
+
+export const genBid = () => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+      let r = Math.random() * 16 | 0,
+          v = c == 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+  });
 }

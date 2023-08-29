@@ -6395,13 +6395,15 @@ var style_selector_fill = function (bId, loc, styles, idDict) {
 };
 // init header info
 var header_fill = function (attrInfo, styles, header) {
-    var _a, _b, _c, _d, _e;
+    var _a, _b, _c, _d, _e, _f, _g;
     if (header !== undefined) {
         var _loop_1 = function (hb) {
             hb.entityMerge = (_a = hb.entityMerge) !== null && _a !== void 0 ? _a : false;
             hb.gridMerge = (_b = hb.gridMerge) !== null && _b !== void 0 ? _b : GridMerge.Merged;
             hb.facet = (_c = hb.facet) !== null && _c !== void 0 ? _c : 1;
-            hb.blankLine = (_d = hb.blankLine) !== null && _d !== void 0 ? _d : false;
+            hb.facetMerge = (_d = hb.facetMerge) !== null && _d !== void 0 ? _d : true;
+            hb.facetEnd = (_e = hb.facetEnd) !== null && _e !== void 0 ? _e : false;
+            hb.blankLine = (_f = hb.blankLine) !== null && _f !== void 0 ? _f : false;
             if (hb.key && Object.keys(hb.key).length === 0)
                 hb.key = undefined;
             var headerStyle = hb.className ? deepAssign({}, styles[hb.className]) : {};
@@ -6419,7 +6421,7 @@ var header_fill = function (attrInfo, styles, header) {
                 return obj.name === hb.attrName;
             });
             if (attr !== undefined)
-                hb.values = (_e = hb.values) !== null && _e !== void 0 ? _e : attr.values;
+                hb.values = (_g = hb.values) !== null && _g !== void 0 ? _g : attr.values;
             // if(hb.children && hb.children.length===0) hb.children = undefined
             header_fill(attrInfo, styles, hb.children);
         };
@@ -6633,21 +6635,25 @@ var get_header_is_facet = function (channel) {
     return false;
 };
 // get all header blockId and blankLine info
-var get_header_id_dict = function (channel, depth) {
+var get_header_id_dict = function (channel, depth, preFEnd) {
     if (depth === void 0) { depth = 0; }
+    if (preFEnd === void 0) { preFEnd = false; }
     if (!channel || channel.length == 0)
         return {};
     var res = {};
     for (var _i = 0, channel_10 = channel; _i < channel_10.length; _i++) {
         var hb = channel_10[_i];
-        var info = get_header_id_dict(hb.children, depth + 1);
+        var facetEnd = preFEnd ? true : hb.facetEnd;
+        var info = get_header_id_dict(hb.children, depth + 1, facetEnd);
         info[hb.blockId] = {
             attrName: hb.attrName,
+            function: hb.function,
             hasBlank: hb.blankLine,
             gridMerge: hb.gridMerge,
             locList: new Array(),
             depth: depth,
-            function: hb.function,
+            facetMerge: hb.facetMerge,
+            facetEnd: facetEnd,
         };
         res = deepAssign(res, info);
     }
@@ -6662,7 +6668,7 @@ var get_cell_id_dict = function (channel) {
         var c = channel_11[_i];
         res[c.blockId] = {
             rowPId: c.rowParentId,
-            colPId: c.columnParentId,
+            colPId: c.colParentId,
         };
     }
     return res;
@@ -7480,6 +7486,98 @@ var gen_valid_value_table = function (table, tableClass, data, idDict) {
     // console.log('ret Table', retTable);
     return retTable;
 };
+var gen_facet_ME_table = function (table, tbClass, idDict) {
+    if (tbClass === CROSS_TABLE)
+        return table;
+    var rowLen = 0;
+    for (var _i = 0, _a = table[0]; _i < _a.length; _i++) {
+        var t = _a[_i];
+        rowLen += t.colSpan;
+    }
+    var formatTable = Array.from({ length: table.length }, function () { return new Array(rowLen)
+        .fill(null).map(function (_) { return ({ rowSpan: 1, colSpan: 1 }); }); });
+    var useRecord = Array.from({ length: table.length }, function () { return new Array(rowLen).fill(false); });
+    for (var i = 0; i < table.length; i++) {
+        for (var j = 0; j < table[i].length; j++) {
+            var tmp = table[i][j], fixJ = j;
+            while (useRecord[i][fixJ])
+                fixJ++;
+            for (var p = 0; p < tmp.rowSpan; p++) {
+                for (var q = 0; q < tmp.colSpan; q++) {
+                    formatTable[i + p][fixJ + q] = __assign(__assign({}, tmp), { isSkip: (p === 0 && q === 0) ? false : true });
+                    useRecord[i + p][fixJ + q] = true;
+                }
+            }
+        }
+    }
+    for (var i = 0; i < formatTable.length; i++) {
+        for (var j = 0; j < formatTable[i].length; j++) {
+            var tmp = formatTable[i][j];
+            var value = tmp.value, id = tmp.sourceBlockId;
+            if (tbClass === ROW_TABLE) {
+                var bias = tmp.rowSpan;
+                if (!tmp.skip && id) {
+                    var rInfo = idDict.rowDict[id];
+                    if (rInfo && rInfo.facetMerge) {
+                        while (i + bias < formatTable.length && value === formatTable[i + bias][j].value &&
+                            id === formatTable[i + bias][j].sourceBlockId) {
+                            tmp.rowSpan += formatTable[i + bias][j].rowSpan;
+                            for (var k = 0; k < formatTable[i + bias][j].rowSpan; k++)
+                                formatTable[i + bias + k][j].isSkip = true;
+                            bias += formatTable[i + bias][j].rowSpan;
+                        }
+                    }
+                    var ceInfo = idDict.cellDict[id];
+                    if ((rInfo && rInfo.facetEnd) || (ceInfo && idDict.rowDict[ceInfo.rowPId].facetEnd)) {
+                        while (i + bias < formatTable.length && !formatTable[i + bias][j].value) {
+                            tmp.rowSpan += formatTable[i + bias][j].rowSpan;
+                            for (var k = 0; k < formatTable[i + bias][j].rowSpan; k++)
+                                formatTable[i + bias + k][j].isSkip = true;
+                            bias += formatTable[i + bias][j].rowSpan;
+                        }
+                    }
+                }
+            }
+            else if (tbClass === COLUM_TABLE) {
+                var bias = tmp.colSpan;
+                if (!tmp.skip && id) {
+                    var cInfo = idDict.colDict[id];
+                    if (cInfo && cInfo.facetMerge) {
+                        while (j + bias < formatTable[i].length && value === formatTable[i][j + bias].value &&
+                            id === formatTable[i][j + bias].sourceBlockId) {
+                            tmp.colSpan += formatTable[i][j + bias].colSpan;
+                            for (var k = 0; k < formatTable[i][j + bias].colSpan; k++)
+                                formatTable[i][j + bias + k].isSkip = true;
+                            bias += formatTable[i][j + bias].colSpan;
+                        }
+                    }
+                    var ceInfo = idDict.cellDict[id];
+                    if ((cInfo && cInfo.facetEnd) || (ceInfo && idDict.colDict[ceInfo.colPId].facetEnd)) {
+                        while (j + bias < formatTable[i].length && !formatTable[i][j + bias].value) {
+                            tmp.colSpan += formatTable[i][j + bias].colSpan;
+                            for (var k = 0; k < formatTable[i][j + bias].colSpan; k++)
+                                formatTable[i][j + bias + k].isSkip = true;
+                            bias += formatTable[i][j + bias].colSpan;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    var retTable = new Array();
+    for (var i = 0; i < formatTable.length; i++) {
+        retTable[i] = new Array();
+        for (var j = 0; j < formatTable[i].length; j++) {
+            var tmp = __assign({}, formatTable[i][j]);
+            if (!tmp.isSkip) {
+                delete tmp.isSkip;
+                retTable[i].push(tmp);
+            }
+        }
+    }
+    console.log('meTable', retTable);
+    return retTable;
+};
 var gen_styled_table = function (table, styles, idDict) {
     var rowLen = 0, retTable = new Array();
     for (var _i = 0, _a = table[0]; _i < _a.length; _i++) {
@@ -8166,6 +8264,14 @@ var table_process = function (tbClass, data, _a) {
         "cellDict": get_cell_id_dict(cell)
     };
     finalTable = gen_valid_value_table(finalTable, tbClass, data.values, idDict);
+    var actTBClass = tbClass;
+    if (tbClass === CROSS_TABLE) {
+        if (get_header_is_facet(rowHeader))
+            actTBClass = ROW_TABLE;
+        else if (get_header_is_facet(columnHeader))
+            actTBClass = COLUM_TABLE;
+    }
+    finalTable = gen_facet_ME_table(finalTable, actTBClass, idDict);
     finalTable = gen_styled_table(finalTable, styles, idDict);
     console.log(rowDepth, colDepth, rowSize, colSize);
     console.log(idDict);
@@ -8229,12 +8335,17 @@ var table2excel = function (_a) {
     utils$1.book_append_sheet(wb, sheet, 'TableShop Output');
     writeFileSyncXLSX(wb, url + '.xlsx');
 };
+var parseTable = function (url, mode) {
+    // const file = await (await fetch(url)).arrayBuffer()
+    console.log(url);
+};
 
 var utils = /*#__PURE__*/Object.freeze({
     __proto__: null,
     spec_init: spec_init,
     transform: transform,
-    table2excel: table2excel
+    table2excel: table2excel,
+    parseTable: parseTable
 });
 
 var index = { utils: utils };
