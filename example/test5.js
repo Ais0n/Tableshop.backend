@@ -468,9 +468,224 @@ let spec4 = {
   "styles": {}
 }
 
-// let table = tableShop.utils.transform({ data, spec: spec4 })
-let url = "/"
-tableShop.utils.parseTable(url, "cc")
+let spec5 = {
+  "type": "block",
+  "rowHeader": [
+      {
+          "attrName": "continent",
+          "blockId": "c05d5561-f28f-40dd-9710-c0b7971474e6",
+          "channel": "row",
+          "entityMerge": true,
+          "gridMerge": "merged",
+          "facet": 1,
+          "facetMerge": true,
+          "facetEnd": false,
+          "blankLine": false,
+          "style": {},
+          "values": [
+              "Asia",
+              "Europe",
+              "America"
+          ],
+          "children": [
+              {
+                  "attrName": "country",
+                  "blockId": "a8c1aa3b-1efd-4d16-be44-fddd3a67ff69",
+                  "entityMerge": false,
+                  "channel": "row",
+                  "gridMerge": "merged",
+                  "facet": 1,
+                  "facetMerge": true,
+                  "facetEnd": false,
+                  "blankLine": false,
+                  "style": {},
+                  "values": [
+                      "CHN",
+                      "JPN",
+                      "GBR",
+                      "FRA",
+                      "USA",
+                      "CAN"
+                  ],
+                  "unfolded": false,
+                  "key": {
+                      "position": "left",
+                      "pattern": "1",
+                      "isInherited": true
+                  }
+              }
+          ],
+          "key": {
+              "position": "left",
+              "pattern": "A",
+              "isInherited": true
+          }
+      }
+  ],
+  "columnHeader": [
+      {
+          "attrName": "year",
+          "blockId": "59d3db0e-29b5-443c-9b9d-300862e6680f",
+          "children": [
+              {
+                  "attrName": "season",
+                  "blockId": "beb8d4ba-1acb-46dc-a156-2f9e2a1514b1",
+                  "children": [],
+                  "channel": "column",
+                  "entityMerge": false,
+                  "gridMerge": "merged",
+                  "facet": 1,
+                  "facetMerge": true,
+                  "facetEnd": false,
+                  "blankLine": false,
+                  "style": {},
+                  "values": [
+                      "spr",
+                      "aut"
+                  ]
+              }
+          ],
+          "channel": "column",
+          "entityMerge": false,
+          "gridMerge": "merged",
+          "facet": 1,
+          "facetMerge": true,
+          "facetEnd": false,
+          "blankLine": false,
+          "style": {},
+          "values": [
+              "2019",
+              "2020",
+              "2021"
+          ]
+      }
+  ],
+  "cell": [
+      {
+          "attrName": "sales",
+          "blockId": "8ddde707-25aa-47c6-9283-18e9565f581e",
+          "channel": "cell",
+          "rowParentId": "a8c1aa3b-1efd-4d16-be44-fddd3a67ff69",
+          "colParentId": "beb8d4ba-1acb-46dc-a156-2f9e2a1514b1",
+          "style": {}
+      },
+      {
+          "attrName": "sales",
+          "blockId": "af5171dc-a2df-48a3-a49c-e386d22e04f4",
+          "rowParentId": "c05d5561-f28f-40dd-9710-c0b7971474e6",
+          "channel": "cell",
+          "style": {}
+      },
+      {
+          "attrName": "sales",
+          "blockId": "0cc56d68-8c5f-4878-9bda-04fa1e111d06",
+          "colParentId": "beb8d4ba-1acb-46dc-a156-2f9e2a1514b1",
+          "channel": "cell",
+          "style": {}
+      },
+      {
+          "attrName": "sales",
+          "blockId": "52a35c6e-c2c8-410c-89dd-5ad38133ef35",
+          "colParentId": "beb8d4ba-1acb-46dc-a156-2f9e2a1514b1",
+          "channel": "cell",
+          "style": {}
+      },
+      {
+          "attrName": "sales",
+          "blockId": "820966e6-c665-4dc2-97ca-28bcb4d16b86",
+          "colParentId": "beb8d4ba-1acb-46dc-a156-2f9e2a1514b1",
+          "channel": "cell",
+          "style": {}
+      },
+      {
+          "attrName": "sales",
+          "blockId": "7a932477-5ef1-4715-89c8-1b3e291f4703",
+          "colParentId": "beb8d4ba-1acb-46dc-a156-2f9e2a1514b1",
+          "channel": "cell",
+          "style": {}
+      }
+  ],
+  "attrInfo": [
+      {
+          "name": "continent",
+          "values": [
+              "Asia",
+              "Europe",
+              "America"
+          ],
+          "dataType": "categorical"
+      },
+      {
+          "name": "country",
+          "values": [
+              "CHN",
+              "JPN",
+              "GBR",
+              "FRA",
+              "USA",
+              "CAN"
+          ],
+          "dataType": "categorical"
+      },
+      {
+          "name": "year",
+          "values": [
+              "2019",
+              "2020",
+              "2021"
+          ],
+          "dataType": "categorical"
+      },
+      {
+          "name": "season",
+          "values": [
+              "spr",
+              "aut"
+          ],
+          "dataType": "categorical"
+      },
+      {
+          "name": "sales",
+          "values": [
+              105,
+              110,
+              120,
+              125,
+              131,
+              150,
+              60,
+              80,
+              82,
+              92,
+              95,
+              104,
+              112,
+              136,
+              59,
+              63,
+              72,
+              79,
+              86,
+              90,
+              101,
+              130,
+              134,
+              140,
+              146,
+              85,
+              88
+          ],
+          "dataType": "numerical"
+      }
+  ],
+  "left": 456,
+  "top": 348,
+  "styles": {}
+}
+
+let table = tableShop.utils.transform({ data, spec: spec5 })
+// let url = "/"
+// tableShop.utils.parseTable(url, "cc")
 // tableShop.utils.table2excel({table, url})
 
 
