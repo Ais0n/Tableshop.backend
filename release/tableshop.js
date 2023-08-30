@@ -22652,6 +22652,7 @@ var get_header_id_dict = function (channel, title, depth, preFEnd) {
             depth: depth,
             facetMerge: hb.facetMerge,
             facetEnd: facetEnd,
+            key: hb.key,
         };
         if (title[depth] === undefined)
             title[depth] = new Array();
@@ -23342,7 +23343,10 @@ var gen_valid_value_table = function (table, tableClass, data, idDict) {
                                 tmpKey = keyList.pop();
                             }
                         }
-                        headSet[idDict.rowDict[id].attrName] = tmp.value;
+                        var value = tmp.value;
+                        if (idDict.rowDict[id].key && idDict.rowDict[id].key.position === Position.EMBEDDED)
+                            value = tmp.value.split(" ").pop();
+                        headSet[idDict.rowDict[id].attrName] = value;
                         keyList.push(idDict.rowDict[id].attrName);
                     }
                     if (idDict.rowDict[id].hasBlank) {
@@ -23403,7 +23407,10 @@ var gen_valid_value_table = function (table, tableClass, data, idDict) {
                                 tmpKey = keyList.pop();
                             }
                         }
-                        headSet[idDict.colDict[id].attrName] = tmp.value;
+                        var value = tmp.value;
+                        if (idDict.colDict[id].key && idDict.colDict[id].key.position === Position.EMBEDDED)
+                            value = tmp.value.split(" ").pop();
+                        headSet[idDict.colDict[id].attrName] = value;
                         keyList.push(idDict.colDict[id].attrName);
                     }
                     if (idDict.colDict[id].hasBlank) {
@@ -23484,6 +23491,8 @@ var gen_valid_value_table = function (table, tableClass, data, idDict) {
         if (retTable[pos].length > 0)
             pos++;
     }
+    if (retTable[retTable.length - 1].length === 0)
+        retTable.pop();
     // console.log('ret Table', util.inspect(retTable, {showHidden: false, depth: null, colors: true}));
     // console.log('ret Table', retTable);
     return retTable;
