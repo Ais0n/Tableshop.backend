@@ -2028,8 +2028,8 @@ const fill_header_spec = (val, extra, depth=0) => {
   return spec
 }
 
-const parseTable = async (url, mode) => {
-  let file = await (await fetch(url)).arrayBuffer()
+const parseTable = async (file: ArrayBuffer, mode: string) => {
+  // let file = await (await fetch(url)).arrayBuffer()
   let wb = read(file), ws = wb.Sheets[wb.SheetNames[0]]
   console.log("workBook", wb)
   console.log("workSheet", ws)

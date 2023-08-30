@@ -24281,193 +24281,187 @@ var fill_header_spec = function (val, extra, depth) {
         spec.children.push(cSpec);
     return spec;
 };
-var parseTable = function (url, mode) { return __awaiter(void 0, void 0, void 0, function () {
-    var file, wb, ws, data, spec, rowDepth, colDepth, cLen, rLen, _i, data_4, d, tmpR, tmpC, i, i, _a, _b, _c, s, e, rowVal, colVal, j, i, i, j, extraR, extraC, rh, ch, c, i, j, rowDepth, colDepth, cLen, rLen, _d, data_5, d, _e, _f, _g, s, e, tmpR, i, j, tmpDict, flag, i, rowVal, colVal, j, i, i, j, extraR, extraC, rh, ch, j, c, i;
+var parseTable = function (file, mode) { return __awaiter(void 0, void 0, void 0, function () {
+    var wb, ws, data, spec, rowDepth, colDepth, cLen, rLen, _i, data_4, d, tmpR, tmpC, i, i, _a, _b, _c, s, e, rowVal, colVal, j, i, i, j, extraR, extraC, rh, ch, c, i, j, rowDepth, colDepth, cLen, rLen, _d, data_5, d, _e, _f, _g, s, e, tmpR, i, j, tmpDict, flag, i, rowVal, colVal, j, i, i, j, extraR, extraC, rh, ch, j, c, i;
     return __generator(this, function (_h) {
-        switch (_h.label) {
-            case 0: return [4 /*yield*/, fetch(url)];
-            case 1: return [4 /*yield*/, (_h.sent()).arrayBuffer()];
-            case 2:
-                file = _h.sent();
-                wb = readSync(file), ws = wb.Sheets[wb.SheetNames[0]];
-                console.log("workBook", wb);
-                console.log("workSheet", ws);
-                data = utils$1.sheet_to_json(ws, { header: 1 });
-                console.log("Raw Data", data);
-                if (data.length === 0)
-                    return [2 /*return*/, {}];
-                spec = {
-                    rowHeader: new Array(),
-                    columnHeader: new Array(),
-                    cell: new Array(),
-                };
-                if (mode === "crosstab") {
-                    rowDepth = 1, colDepth = 0;
-                    cLen = 0, rLen = data.length;
-                    for (_i = 0, data_4 = data; _i < data_4.length; _i++) {
-                        d = data_4[_i];
-                        if (cLen < d.length)
-                            cLen = d.length;
+        wb = readSync(file), ws = wb.Sheets[wb.SheetNames[0]];
+        console.log("workBook", wb);
+        console.log("workSheet", ws);
+        data = utils$1.sheet_to_json(ws, { header: 1 });
+        console.log("Raw Data", data);
+        if (data.length === 0)
+            return [2 /*return*/, {}];
+        spec = {
+            rowHeader: new Array(),
+            columnHeader: new Array(),
+            cell: new Array(),
+        };
+        if (mode === "crosstab") {
+            rowDepth = 1, colDepth = 0;
+            cLen = 0, rLen = data.length;
+            for (_i = 0, data_4 = data; _i < data_4.length; _i++) {
+                d = data_4[_i];
+                if (cLen < d.length)
+                    cLen = d.length;
+            }
+            if (data[0][0] === undefined) {
+                tmpR = 0, tmpC = 0;
+                for (i = 0; i < rLen; i++) {
+                    if (data[0][i] !== undefined)
+                        break;
+                    tmpR++;
+                }
+                for (i = 0; i < cLen; i++) {
+                    if (data[i][0] !== undefined)
+                        break;
+                    tmpC++;
+                }
+                rowDepth = tmpR, colDepth = tmpC;
+            }
+            else {
+                if (ws["!merges"]) {
+                    for (_a = 0, _b = ws["!merges"]; _a < _b.length; _a++) {
+                        _c = _b[_a], s = _c.s, e = _c.e;
+                        if (s.r === 0 && s.c === 0) {
+                            rowDepth = e.c;
+                            colDepth = e.r;
+                            break;
+                        }
                     }
-                    if (data[0][0] === undefined) {
-                        tmpR = 0, tmpC = 0;
-                        for (i = 0; i < rLen; i++) {
-                            if (data[0][i] !== undefined)
-                                break;
-                            tmpR++;
-                        }
-                        for (i = 0; i < cLen; i++) {
-                            if (data[i][0] !== undefined)
-                                break;
-                            tmpC++;
-                        }
-                        rowDepth = tmpR, colDepth = tmpC;
+                }
+            }
+            rowVal = new Array(), colVal = new Array();
+            for (j = 0; j < rowDepth; j++) {
+                rowVal[j] = {};
+                for (i = colDepth; i < rLen; i++) {
+                    if (data[i][j])
+                        rowVal[j][data[i][j]] = data[i][j];
+                }
+            }
+            for (i = 0; i < colDepth; i++) {
+                colVal[i] = {};
+                for (j = rowDepth; j < rLen; j++) {
+                    if (data[i][j])
+                        colVal[i][data[i][j]] = data[i][j];
+                }
+            }
+            extraR = { pId: undefined }, extraC = { pId: undefined };
+            rh = fill_header_spec(rowVal, extraR), ch = fill_header_spec(colVal, extraC);
+            if (rh !== undefined)
+                spec.rowHeader.push(rh);
+            if (ch !== undefined)
+                spec.columnHeader.push(ch);
+            c = {
+                blockId: genBid(),
+                rowParentId: extraR.pId,
+                colParentId: extraC.pId,
+                dataType: DataType.CATEGORICAL,
+                values: new Array()
+            };
+            for (i = colDepth; i < rLen; i++) {
+                for (j = rowDepth; j < cLen; j++) {
+                    if (!isNaN(Number(data[i][j]))) {
+                        c.dataType = DataType.NUMERICAL;
+                        c.values.push(Number(data[i][j]));
                     }
                     else {
-                        if (ws["!merges"]) {
-                            for (_a = 0, _b = ws["!merges"]; _a < _b.length; _a++) {
-                                _c = _b[_a], s = _c.s, e = _c.e;
-                                if (s.r === 0 && s.c === 0) {
-                                    rowDepth = e.c;
-                                    colDepth = e.r;
-                                    break;
-                                }
-                            }
-                        }
+                        if (data[i][j])
+                            c.values.push(data[i][j]);
                     }
-                    rowVal = new Array(), colVal = new Array();
-                    for (j = 0; j < rowDepth; j++) {
-                        rowVal[j] = {};
-                        for (i = colDepth; i < rLen; i++) {
-                            if (data[i][j])
-                                rowVal[j][data[i][j]] = data[i][j];
-                        }
-                    }
-                    for (i = 0; i < colDepth; i++) {
-                        colVal[i] = {};
-                        for (j = rowDepth; j < rLen; j++) {
-                            if (data[i][j])
-                                colVal[i][data[i][j]] = data[i][j];
-                        }
-                    }
-                    extraR = { pId: undefined }, extraC = { pId: undefined };
-                    rh = fill_header_spec(rowVal, extraR), ch = fill_header_spec(colVal, extraC);
-                    if (rh !== undefined)
-                        spec.rowHeader.push(rh);
-                    if (ch !== undefined)
-                        spec.columnHeader.push(ch);
-                    c = {
-                        blockId: genBid(),
-                        rowParentId: extraR.pId,
-                        colParentId: extraC.pId,
-                        dataType: DataType.CATEGORICAL,
-                        values: new Array()
-                    };
-                    for (i = colDepth; i < rLen; i++) {
-                        for (j = rowDepth; j < cLen; j++) {
-                            if (!isNaN(Number(data[i][j]))) {
-                                c.dataType = DataType.NUMERICAL;
-                                c.values.push(Number(data[i][j]));
-                            }
-                            else {
-                                if (data[i][j])
-                                    c.values.push(data[i][j]);
-                            }
-                        }
-                    }
-                    if (extraR.pId !== undefined || extraC.pId !== undefined)
-                        spec.cell.push(c);
                 }
-                else if (mode === "relational") {
-                    rowDepth = 0, colDepth = 1;
-                    cLen = 0, rLen = data.length;
-                    for (_d = 0, data_5 = data; _d < data_5.length; _d++) {
-                        d = data_5[_d];
-                        if (cLen < d.length)
-                            cLen = d.length;
-                    }
-                    if (ws["!merges"]) {
-                        for (_e = 0, _f = ws["!merges"]; _e < _f.length; _e++) {
-                            _g = _f[_e], s = _g.s, e = _g.e;
-                            if (s.r === 0 && s.c === 0) {
-                                colDepth = e.r;
-                                break;
-                            }
-                        }
-                    }
-                    if (data[0][0] === undefined) {
-                        tmpR = 0;
-                        for (i = 0; i < rLen; i++) {
-                            if (data[0][i] !== undefined)
-                                break;
-                            tmpR++;
-                        }
-                        rowDepth = tmpR;
-                    }
-                    else {
-                        rowDepth = cLen;
-                        for (j = 0; j < cLen; j++) {
-                            tmpDict = {}, flag = true;
-                            for (i = colDepth; i < rLen; i++) {
-                                if (tmpDict[data[i][j]]) {
-                                    flag = false;
-                                    break;
-                                }
-                                tmpDict[data[i][j]] = data[i][j];
-                            }
-                            if (flag) {
-                                rowDepth = j;
-                                break;
-                            }
-                        }
-                    }
-                    rowVal = new Array(), colVal = new Array();
-                    for (j = 0; j < rowDepth; j++) {
-                        rowVal[j] = {};
-                        for (i = colDepth; i < rLen; i++) {
-                            if (data[i][j])
-                                rowVal[j][data[i][j]] = data[i][j];
-                        }
-                    }
-                    for (i = 0; i < colDepth; i++) {
-                        colVal[i] = {};
-                        for (j = rowDepth; j < rLen; j++) {
-                            if (data[i][j])
-                                colVal[i][data[i][j]] = data[i][j];
-                        }
-                    }
-                    console.log('object', rowVal, colVal);
-                    extraR = { pId: undefined }, extraC = { pId: undefined };
-                    rh = fill_header_spec(rowVal, extraR), ch = fill_header_spec(colVal, extraC);
-                    if (rh !== undefined)
-                        spec.rowHeader.push(rh);
-                    if (ch !== undefined)
-                        spec.columnHeader.push(ch);
-                    for (j = rowDepth; j < cLen; j++) {
-                        c = {
-                            blockId: genBid(),
-                            rowParentId: extraR.pId,
-                            colParentId: extraC.pId,
-                            dataType: DataType.CATEGORICAL,
-                            values: new Array()
-                        };
-                        for (i = colDepth; i < rLen; i++) {
-                            if (!isNaN(Number(data[i][j]))) {
-                                c.dataType = DataType.NUMERICAL;
-                                c.values.push(Number(data[i][j]));
-                            }
-                            else {
-                                if (data[i][j])
-                                    c.values.push(data[i][j]);
-                            }
-                        }
-                        if (extraR.pId !== undefined || extraC.pId !== undefined)
-                            spec.cell.push(c);
-                    }
-                    console.log('hd', spec);
-                }
-                return [2 /*return*/, spec];
+            }
+            if (extraR.pId !== undefined || extraC.pId !== undefined)
+                spec.cell.push(c);
         }
+        else if (mode === "relational") {
+            rowDepth = 0, colDepth = 1;
+            cLen = 0, rLen = data.length;
+            for (_d = 0, data_5 = data; _d < data_5.length; _d++) {
+                d = data_5[_d];
+                if (cLen < d.length)
+                    cLen = d.length;
+            }
+            if (ws["!merges"]) {
+                for (_e = 0, _f = ws["!merges"]; _e < _f.length; _e++) {
+                    _g = _f[_e], s = _g.s, e = _g.e;
+                    if (s.r === 0 && s.c === 0) {
+                        colDepth = e.r;
+                        break;
+                    }
+                }
+            }
+            if (data[0][0] === undefined) {
+                tmpR = 0;
+                for (i = 0; i < rLen; i++) {
+                    if (data[0][i] !== undefined)
+                        break;
+                    tmpR++;
+                }
+                rowDepth = tmpR;
+            }
+            else {
+                rowDepth = cLen;
+                for (j = 0; j < cLen; j++) {
+                    tmpDict = {}, flag = true;
+                    for (i = colDepth; i < rLen; i++) {
+                        if (tmpDict[data[i][j]]) {
+                            flag = false;
+                            break;
+                        }
+                        tmpDict[data[i][j]] = data[i][j];
+                    }
+                    if (flag) {
+                        rowDepth = j;
+                        break;
+                    }
+                }
+            }
+            rowVal = new Array(), colVal = new Array();
+            for (j = 0; j < rowDepth; j++) {
+                rowVal[j] = {};
+                for (i = colDepth; i < rLen; i++) {
+                    if (data[i][j])
+                        rowVal[j][data[i][j]] = data[i][j];
+                }
+            }
+            for (i = 0; i < colDepth; i++) {
+                colVal[i] = {};
+                for (j = rowDepth; j < rLen; j++) {
+                    if (data[i][j])
+                        colVal[i][data[i][j]] = data[i][j];
+                }
+            }
+            console.log('object', rowVal, colVal);
+            extraR = { pId: undefined }, extraC = { pId: undefined };
+            rh = fill_header_spec(rowVal, extraR), ch = fill_header_spec(colVal, extraC);
+            if (rh !== undefined)
+                spec.rowHeader.push(rh);
+            if (ch !== undefined)
+                spec.columnHeader.push(ch);
+            for (j = rowDepth; j < cLen; j++) {
+                c = {
+                    blockId: genBid(),
+                    rowParentId: extraR.pId,
+                    colParentId: extraC.pId,
+                    dataType: DataType.CATEGORICAL,
+                    values: new Array()
+                };
+                for (i = colDepth; i < rLen; i++) {
+                    if (!isNaN(Number(data[i][j]))) {
+                        c.dataType = DataType.NUMERICAL;
+                        c.values.push(Number(data[i][j]));
+                    }
+                    else {
+                        if (data[i][j])
+                            c.values.push(data[i][j]);
+                    }
+                }
+                if (extraR.pId !== undefined || extraC.pId !== undefined)
+                    spec.cell.push(c);
+            }
+            console.log('hd', spec);
+        }
+        return [2 /*return*/, spec];
     });
 }); };
 
