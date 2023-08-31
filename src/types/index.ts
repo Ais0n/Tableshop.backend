@@ -7,7 +7,7 @@ import {
   HeaderBlock, CellBlock, HeaderChannel, CellChannel, StyleClass,
   FUNC_SUM
 } from "./data_source"
-import { CROSS_TABLE, ROW_TABLE, COLUM_TABLE, interCell } from "./data_intermediate";
+import { CROSS_TABLE, ROW_TABLE, COLUM_TABLE, interCell, BlockType } from "./data_intermediate";
 import { SelectorType } from "./style_selector";
 
 interface Spec {
@@ -24,6 +24,6 @@ export {
   HeaderBlock, CellBlock, HeaderChannel, CellChannel, StyleClass,
   FUNC_SUM,
   CROSS_TABLE, ROW_TABLE, COLUM_TABLE, 
-  interCell,
+  interCell, BlockType,
   SelectorType
 }

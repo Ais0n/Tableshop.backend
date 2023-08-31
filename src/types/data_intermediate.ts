@@ -7,7 +7,16 @@ export interface interCell {
   sourceBlockId: string;
   rowSpan: number;
   colSpan: number;
+  type: string;
   style: string;
 }
 
+export enum BlockType {
+  ROW = "row",
+  COLUMN = "column",
+  CELL = "cell",
+  KEY = "key",
+  FUNCTION = "function",
+  TITLE = "title",
+}
 

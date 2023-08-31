@@ -127,6 +127,15 @@ var FUNC_SUM = "sum";
 var CROSS_TABLE = "cross table";
 var ROW_TABLE = "row table";
 var COLUM_TABLE = "column table";
+var BlockType;
+(function (BlockType) {
+    BlockType["ROW"] = "row";
+    BlockType["COLUMN"] = "column";
+    BlockType["CELL"] = "cell";
+    BlockType["KEY"] = "key";
+    BlockType["FUNCTION"] = "function";
+    BlockType["TITLE"] = "title";
+})(BlockType || (BlockType = {}));
 
 var SelectorType;
 (function (SelectorType) {
@@ -22791,6 +22800,7 @@ var gen_inter_row_table = function (interRowTable, rowHeader, extra, width, dept
         var headerDepth = depth + keyBias + leftBias, keyDepth = headerDepth;
         // let headerStyle = style_process(rh.style)
         var headerStyle = rh.style;
+        var headType = rh.function ? BlockType.FUNCTION : BlockType.ROW;
         var isKeyEmbedded = false;
         if (rh.key && rh.key.position === Position.LEFT)
             keyDepth = headerDepth - 1;
@@ -22811,7 +22821,8 @@ var gen_inter_row_table = function (interRowTable, rowHeader, extra, width, dept
                 isUsed: false,
                 isLeaf: isLeaf,
                 isKey: true,
-                style: headerStyle
+                type: BlockType.KEY,
+                style: headerStyle,
             };
             if (source)
                 extra.preVal[source] = rh.values[i];
@@ -22840,6 +22851,7 @@ var gen_inter_row_table = function (interRowTable, rowHeader, extra, width, dept
                     isUsed: false,
                     isLeaf: isLeaf,
                     isKey: false,
+                    type: headType,
                     style: headerStyle
                 };
                 // process as cells merged 
@@ -22857,6 +22869,7 @@ var gen_inter_row_table = function (interRowTable, rowHeader, extra, width, dept
                         isUsed: false,
                         isLeaf: isLeaf,
                         isKey: false,
+                        type: headType,
                         style: headerStyle
                     };
                 }
@@ -22877,6 +22890,7 @@ var gen_inter_row_table = function (interRowTable, rowHeader, extra, width, dept
                                 value: aggregate_use(extra.preVal, extra.data, c.attrName, FUNC_SUM),
                                 source: c.attrName,
                                 sourceBlockId: c.blockId,
+                                type: BlockType.CELL,
                                 style: cellStyle
                             });
                             // Process attr cell
@@ -22886,6 +22900,7 @@ var gen_inter_row_table = function (interRowTable, rowHeader, extra, width, dept
                                 value: get_cell_val(extra.preVal, extra.data, c.attrName),
                                 source: c.attrName,
                                 sourceBlockId: c.blockId,
+                                type: BlockType.CELL,
                                 style: cellStyle
                             });
                         }
@@ -22930,6 +22945,7 @@ var gen_inter_column_table = function (interColumnTable, columnHeader, extra, wi
         var headerDepth = depth + keyBias + topBias, keyDepth = headerDepth;
         // let headerStyle = style_process(ch.style)
         var headerStyle = ch.style;
+        var headType = ch.function ? BlockType.FUNCTION : BlockType.COLUMN;
         var isKeyEmbedded = false;
         if (ch.key && ch.key.position === Position.TOP)
             keyDepth = headerDepth - 1;
@@ -22950,6 +22966,7 @@ var gen_inter_column_table = function (interColumnTable, columnHeader, extra, wi
                 isUsed: false,
                 isLeaf: isLeaf,
                 isKey: true,
+                type: BlockType.KEY,
                 style: headerStyle
             };
             if (source)
@@ -22979,6 +22996,7 @@ var gen_inter_column_table = function (interColumnTable, columnHeader, extra, wi
                     isUsed: false,
                     isLeaf: isLeaf,
                     isKey: false,
+                    type: headType,
                     style: headerStyle
                 };
                 // process as cells merged 
@@ -22996,6 +23014,7 @@ var gen_inter_column_table = function (interColumnTable, columnHeader, extra, wi
                         isUsed: false,
                         isLeaf: isLeaf,
                         isKey: false,
+                        type: headType,
                         style: headerStyle
                     };
                 }
@@ -23016,6 +23035,7 @@ var gen_inter_column_table = function (interColumnTable, columnHeader, extra, wi
                                 value: aggregate_use(extra.preVal, extra.data, c.attrName, FUNC_SUM),
                                 source: c.attrName,
                                 sourceBlockId: c.blockId,
+                                type: BlockType.CELL,
                                 style: cellStyle
                             });
                             // Process attr cell
@@ -23025,6 +23045,7 @@ var gen_inter_column_table = function (interColumnTable, columnHeader, extra, wi
                                 value: get_cell_val(extra.preVal, extra.data, c.attrName),
                                 source: c.attrName,
                                 sourceBlockId: c.blockId,
+                                type: BlockType.CELL,
                                 style: cellStyle
                             });
                         }
@@ -23067,6 +23088,7 @@ var gen_inter_cross_table = function (interCrossTable, rowExtra, colExtra, cell)
                             // source: c.attrName,
                             sourceBlockId: c.blockId,
                             rowSpan: 1, colSpan: 1,
+                            type: BlockType.CELL,
                             style: cellStyle
                         };
                     }
@@ -23076,6 +23098,7 @@ var gen_inter_cross_table = function (interCrossTable, rowExtra, colExtra, cell)
                             // source: c.attrName,
                             sourceBlockId: c.blockId,
                             rowSpan: 1, colSpan: 1,
+                            type: BlockType.CELL,
                             style: cellStyle
                         };
                     }
@@ -23353,6 +23376,7 @@ var gen_grid_merged_table = function (table, idDict) {
                 sourceBlockId: tmp.sourceBlockId,
                 rowSpan: rs,
                 colSpan: cs,
+                type: tmp.type,
                 style: tmp.style
             });
             if (mergeType !== GridMerge.UnmergedAll) {
@@ -23595,6 +23619,7 @@ var table_process = function (tbClass, data, _a) {
                         sourceBlockId: tmp.sourceBlockId,
                         rowSpan: tmp.rowSpan,
                         colSpan: tmp.colSpan,
+                        type: tmp.type,
                         style: tmp.style
                     });
                 }
@@ -23605,6 +23630,7 @@ var table_process = function (tbClass, data, _a) {
                         sourceBlockId: tmp.sourceBlockId,
                         rowSpan: 1,
                         colSpan: headKeySpan[j],
+                        type: tmp.type,
                         style: tmp.style
                     });
                 }
@@ -23621,6 +23647,7 @@ var table_process = function (tbClass, data, _a) {
                     sourceBlockId: c.sourceBlockId,
                     rowSpan: 1,
                     colSpan: 1,
+                    type: c.type,
                     style: c.style
                 });
             }
@@ -23632,10 +23659,11 @@ var table_process = function (tbClass, data, _a) {
             for (var j = 0; j < resLength; j++)
                 processTable[i].push({
                     value: undefined,
-                    // source: undefined as any,
+                    // source: undefined,
                     sourceBlockId: undefined,
                     rowSpan: 1,
                     colSpan: 1,
+                    type: undefined,
                     style: undefined
                 });
         }
@@ -23717,6 +23745,7 @@ var table_process = function (tbClass, data, _a) {
                         sourceBlockId: tmp.sourceBlockId,
                         rowSpan: tmp.rowSpan,
                         colSpan: tmp.colSpan,
+                        type: tmp.type,
                         style: tmp.style
                     });
                 }
@@ -23727,6 +23756,7 @@ var table_process = function (tbClass, data, _a) {
                         sourceBlockId: tmp.sourceBlockId,
                         rowSpan: headKeySpan[i],
                         colSpan: 1,
+                        type: tmp.type,
                         style: tmp.style
                     });
                 }
@@ -23743,6 +23773,7 @@ var table_process = function (tbClass, data, _a) {
                     sourceBlockId: c.sourceBlockId,
                     rowSpan: 1,
                     colSpan: 1,
+                    type: c.type,
                     style: c.style
                 });
             }
@@ -23754,10 +23785,11 @@ var table_process = function (tbClass, data, _a) {
             for (var j = 0; j < resLength; j++)
                 processTable[i].push({
                     value: undefined,
-                    // source: undefined as any,
+                    // source: undefined,
                     sourceBlockId: undefined,
                     rowSpan: 1,
                     colSpan: 1,
+                    type: undefined,
                     style: undefined
                 });
         }
@@ -23897,6 +23929,7 @@ var table_process = function (tbClass, data, _a) {
                             sourceBlockId: tmp.sourceBlockId,
                             rowSpan: tmp.rowSpan,
                             colSpan: tmp.colSpan,
+                            type: tmp.type,
                             style: tmp.style
                         };
                     }
@@ -23907,6 +23940,7 @@ var table_process = function (tbClass, data, _a) {
                             sourceBlockId: tmp.sourceBlockId,
                             rowSpan: 1,
                             colSpan: headKeyRowSpan[j],
+                            type: tmp.type,
                             style: tmp.style
                         };
                     }
@@ -23969,6 +24003,7 @@ var table_process = function (tbClass, data, _a) {
                             sourceBlockId: tmp.sourceBlockId,
                             rowSpan: tmp.rowSpan,
                             colSpan: tmp.colSpan,
+                            type: tmp.type,
                             style: tmp.style
                         });
                     }
@@ -23979,6 +24014,7 @@ var table_process = function (tbClass, data, _a) {
                             sourceBlockId: tmp.sourceBlockId,
                             rowSpan: headKeyColSpan[i],
                             colSpan: 1,
+                            type: tmp.type,
                             style: tmp.style
                         });
                     }
@@ -24023,8 +24059,10 @@ var table_process = function (tbClass, data, _a) {
             for (var i = 0; i < rowDepth; i++)
                 cs += headKeyRowSpan[i];
             finalTable[0].unshift({
-                value: undefined, sourceBlockId: undefined,
+                value: undefined,
+                sourceBlockId: undefined,
                 rowSpan: rs, colSpan: cs,
+                type: BlockType.TITLE,
                 style: undefined
             });
             console.log('final cross', finalTable);
@@ -24061,6 +24099,7 @@ var table_process = function (tbClass, data, _a) {
                             sourceBlockId: tmp.sourceBlockId,
                             rowSpan: tmp.rowSpan,
                             colSpan: tmp.colSpan,
+                            type: tmp.type,
                             style: tmp.style
                         };
                     }
@@ -24071,6 +24110,7 @@ var table_process = function (tbClass, data, _a) {
                             sourceBlockId: tmp.sourceBlockId,
                             rowSpan: headKeyColSpan[i],
                             colSpan: 1,
+                            type: tmp.type,
                             style: tmp.style
                         };
                     }
@@ -24134,6 +24174,7 @@ var table_process = function (tbClass, data, _a) {
                             sourceBlockId: tmp.sourceBlockId,
                             rowSpan: tmp.rowSpan,
                             colSpan: tmp.colSpan,
+                            type: tmp.type,
                             style: tmp.style
                         });
                     }
@@ -24144,6 +24185,7 @@ var table_process = function (tbClass, data, _a) {
                             sourceBlockId: tmp.sourceBlockId,
                             rowSpan: 1,
                             colSpan: headKeyRowSpan[j],
+                            type: tmp.type,
                             style: tmp.style
                         });
                     }
@@ -24184,8 +24226,10 @@ var table_process = function (tbClass, data, _a) {
             for (var i = 0; i < rowDepth; i++)
                 cs += headKeyRowSpan[i];
             finalTable[0].unshift({
-                value: undefined, sourceBlockId: undefined,
+                value: undefined,
+                sourceBlockId: undefined,
                 rowSpan: rs, colSpan: cs,
+                type: BlockType.TITLE,
                 style: undefined
             });
             console.log('final cross', finalTable);

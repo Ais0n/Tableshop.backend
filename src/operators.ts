@@ -7,7 +7,7 @@ import {
   HeaderBlock, CellBlock, HeaderChannel, CellChannel, StyleClass,
   FUNC_SUM,
   CROSS_TABLE, ROW_TABLE, COLUM_TABLE, 
-  interCell,
+  interCell, BlockType,
   SelectorType
 } from "./types";
 import { deepAssign, genBid } from "./utils";
@@ -471,6 +471,7 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
     let headerDepth = depth + keyBias + leftBias, keyDepth = headerDepth
     // let headerStyle = style_process(rh.style)
     let headerStyle = rh.style
+    let headType = rh.function ? BlockType.FUNCTION : BlockType.ROW
     let isKeyEmbedded = false
     if(rh.key && rh.key.position === Position.LEFT) keyDepth = headerDepth - 1
     if(rh.key && rh.key.position === Position.RIGHT) keyDepth = headerDepth + 1
@@ -488,7 +489,8 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
         isUsed: false,
         isLeaf,
         isKey: true,
-        style: headerStyle
+        type: BlockType.KEY,
+        style: headerStyle,
       }
       if(source) extra.preVal[source] = rh.values[i]
       if(!get_cell_head_is_valid(extra.preVal, extra.data) && rh.attrName) {
@@ -517,6 +519,7 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
           isUsed: false, 
           isLeaf,
           isKey: false,
+          type: headType,
           style: headerStyle
         }
       // process as cells merged 
@@ -533,6 +536,7 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
             isUsed: false,
             isLeaf,
             isKey: false,
+            type: headType,
             style: headerStyle
           }
         }
@@ -551,6 +555,7 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
                 value: aggregate_use(extra.preVal, extra.data, c.attrName, FUNC_SUM),
                 source: c.attrName,
                 sourceBlockId: c.blockId,
+                type: BlockType.CELL,
                 style: cellStyle
               }) 
             // Process attr cell
@@ -559,6 +564,7 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
                 value: get_cell_val(extra.preVal, extra.data, c.attrName),
                 source: c.attrName,
                 sourceBlockId: c.blockId,
+                type: BlockType.CELL,
                 style: cellStyle
               }) 
             }
@@ -597,6 +603,7 @@ const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: nu
     let headerDepth = depth + keyBias + topBias, keyDepth = headerDepth
     // let headerStyle = style_process(ch.style)
     let headerStyle = ch.style
+    let headType = ch.function ? BlockType.FUNCTION : BlockType.COLUMN
     let isKeyEmbedded = false
     if(ch.key && ch.key.position === Position.TOP) keyDepth = headerDepth - 1
     if(ch.key && ch.key.position === Position.BOTTOM) keyDepth = headerDepth + 1
@@ -614,6 +621,7 @@ const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: nu
         isUsed: false,
         isLeaf,
         isKey: true,
+        type: BlockType.KEY,
         style: headerStyle
       }
       if(source) extra.preVal[source] = ch.values[i]
@@ -643,6 +651,7 @@ const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: nu
           isUsed: false, 
           isLeaf,
           isKey: false,
+          type: headType,
           style: headerStyle
         }
       // process as cells merged 
@@ -659,6 +668,7 @@ const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: nu
             isUsed: false,
             isLeaf,
             isKey: false,
+            type: headType,
             style: headerStyle
           }
         }
@@ -677,6 +687,7 @@ const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: nu
                 value: aggregate_use(extra.preVal, extra.data, c.attrName, FUNC_SUM),
                 source: c.attrName,
                 sourceBlockId: c.blockId,
+                type: BlockType.CELL,
                 style: cellStyle
               }) 
             // Process attr cell
@@ -685,6 +696,7 @@ const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: nu
                 value: get_cell_val(extra.preVal, extra.data, c.attrName),
                 source: c.attrName,
                 sourceBlockId: c.blockId,
+                type: BlockType.CELL,
                 style: cellStyle
               }) 
             }
@@ -726,6 +738,7 @@ const gen_inter_cross_table = (interCrossTable, rowExtra, colExtra, cell) => {
               // source: c.attrName,
               sourceBlockId: c.blockId,
               rowSpan: 1, colSpan: 1,
+              type: BlockType.CELL,
               style: cellStyle
             }
           } else {
@@ -734,6 +747,7 @@ const gen_inter_cross_table = (interCrossTable, rowExtra, colExtra, cell) => {
               // source: c.attrName,
               sourceBlockId: c.blockId,
               rowSpan: 1, colSpan: 1,
+              type: BlockType.CELL,
               style: cellStyle
             }
           }
@@ -1085,6 +1099,7 @@ const gen_valid_value_table = (table, tableClass, data, idDict) => {
         sourceBlockId: tmp.sourceBlockId,
         rowSpan: rs, 
         colSpan: cs,
+        type: tmp.type,
         style: tmp.style
       })
       if(mergeType !== GridMerge.UnmergedAll) {
@@ -1152,6 +1167,7 @@ const gen_grid_merged_table = (table, idDict) => {
         sourceBlockId: tmp.sourceBlockId,
         rowSpan: rs, 
         colSpan: cs,
+        type: tmp.type,
         style: tmp.style
       })
       if(mergeType !== GridMerge.UnmergedAll) {
@@ -1376,6 +1392,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
             sourceBlockId: tmp.sourceBlockId,
             rowSpan: tmp.rowSpan, 
             colSpan: tmp.colSpan,
+            type: tmp.type,
             style: tmp.style
           })
         } else {
@@ -1385,6 +1402,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
             sourceBlockId: tmp.sourceBlockId,
             rowSpan: 1, 
             colSpan: headKeySpan[j],
+            type: tmp.type,
             style: tmp.style
           })
         }
@@ -1400,6 +1418,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
           sourceBlockId: c.sourceBlockId,
           rowSpan: 1,
           colSpan: 1,
+          type: c.type,
           style: c.style
         })
       }
@@ -1409,12 +1428,13 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
     for(let i=0; i<processTable.length; i++) {
       let resLength = maxLength - tmpLength[i]
       for(let j=0; j<resLength; j++) processTable[i].push({
-          value: undefined as any,
-          // source: undefined as any,
-          sourceBlockId: undefined as any,
+          value: undefined,
+          // source: undefined,
+          sourceBlockId: undefined,
           rowSpan: 1,
           colSpan: 1,
-          style: undefined as any
+          type: undefined,
+          style: undefined
       })
     }
     // process blankLine and facet structure
@@ -1490,6 +1510,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
             sourceBlockId: tmp.sourceBlockId,
             rowSpan: tmp.rowSpan, 
             colSpan: tmp.colSpan,
+            type: tmp.type,
             style: tmp.style
           })
         } else {
@@ -1499,6 +1520,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
             sourceBlockId: tmp.sourceBlockId,
             rowSpan: headKeySpan[i], 
             colSpan: 1,
+            type: tmp.type,
             style: tmp.style
           })
         }
@@ -1514,6 +1536,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
           sourceBlockId: c.sourceBlockId,
           rowSpan: 1,
           colSpan: 1,
+          type: c.type,
           style: c.style
         })
       }
@@ -1523,12 +1546,13 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
     for(let i=0; i<processTable.length; i++) {
       let resLength = maxLength - tmpLength[i]
       for(let j=0; j<resLength; j++) processTable[i].push({
-          value: undefined as any,
-          // source: undefined as any,
-          sourceBlockId: undefined as any,
+          value: undefined,
+          // source: undefined,
+          sourceBlockId: undefined,
           rowSpan: 1,
           colSpan: 1,
-          style: undefined as any
+          type: undefined,
+          style: undefined
       })
     }
     // process blankLine and facet structure
@@ -1662,6 +1686,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
               sourceBlockId: tmp.sourceBlockId,
               rowSpan: tmp.rowSpan, 
               colSpan: tmp.colSpan,
+              type: tmp.type,
               style: tmp.style
             }
           } else {
@@ -1671,6 +1696,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
               sourceBlockId: tmp.sourceBlockId,
               rowSpan: 1, 
               colSpan: headKeyRowSpan[j],
+              type: tmp.type,
               style: tmp.style
             }
           }
@@ -1733,6 +1759,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
               sourceBlockId: tmp.sourceBlockId,
               rowSpan: tmp.rowSpan, 
               colSpan: tmp.colSpan,
+              type: tmp.type,
               style: tmp.style
             })
           } else {
@@ -1742,6 +1769,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
               sourceBlockId: tmp.sourceBlockId,
               rowSpan: headKeyColSpan[i], 
               colSpan: 1,
+              type: tmp.type,
               style: tmp.style
             })
           }
@@ -1781,8 +1809,10 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
       for(let i=0; i<colDepth; i++) rs += headKeyColSpan[i]
       for(let i=0; i<rowDepth; i++) cs += headKeyRowSpan[i]
       finalTable[0].unshift({
-        value: undefined as any, sourceBlockId: undefined as any,
+        value: undefined as any, 
+        sourceBlockId: undefined as any,
         rowSpan: rs, colSpan: cs,
+        type: BlockType.TITLE,
         style: undefined as any
       })
       console.log('final cross', finalTable);
@@ -1819,6 +1849,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
               sourceBlockId: tmp.sourceBlockId,
               rowSpan: tmp.rowSpan, 
               colSpan: tmp.colSpan,
+              type: tmp.type,
               style: tmp.style
             }
           } else {
@@ -1828,6 +1859,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
               sourceBlockId: tmp.sourceBlockId,
               rowSpan: headKeyColSpan[i], 
               colSpan: 1,
+              type: tmp.type,
               style: tmp.style
             }
           }
@@ -1890,6 +1922,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
               sourceBlockId: tmp.sourceBlockId,
               rowSpan: tmp.rowSpan, 
               colSpan: tmp.colSpan,
+              type: tmp.type,
               style: tmp.style
             })
           } else {
@@ -1899,6 +1932,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
               sourceBlockId: tmp.sourceBlockId,
               rowSpan: 1, 
               colSpan: headKeyRowSpan[j],
+              type: tmp.type,
               style: tmp.style
             })
           }
@@ -1936,8 +1970,10 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
       for(let i=0; i<colDepth; i++) rs += headKeyColSpan[i]
       for(let i=0; i<rowDepth; i++) cs += headKeyRowSpan[i]
       finalTable[0].unshift({
-        value: undefined as any, sourceBlockId: undefined as any,
+        value: undefined as any, 
+        sourceBlockId: undefined as any,
         rowSpan: rs, colSpan: cs,
+        type: BlockType.TITLE,
         style: undefined as any
       })
       console.log('final cross', finalTable);
