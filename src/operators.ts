@@ -491,7 +491,7 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
         style: headerStyle
       }
       if(source) extra.preVal[source] = rh.values[i]
-      if(!get_cell_head_is_valid(extra.preVal, extra.data)) {
+      if(!get_cell_head_is_valid(extra.preVal, extra.data) && rh.attrName) {
         delete extra.preVal[source]
         continue
       }
@@ -617,7 +617,7 @@ const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: nu
         style: headerStyle
       }
       if(source) extra.preVal[source] = ch.values[i]
-      if(!get_cell_head_is_valid(extra.preVal, extra.data)) {
+      if(!get_cell_head_is_valid(extra.preVal, extra.data) && ch.attrName) {
         delete extra.preVal[source]
         continue
       }
@@ -768,7 +768,7 @@ const gen_blank_facet_table = (rawTable, header, info, depth, outerX,
       let iterCount = 1, len = info.cellLength, tmpFacetSpan = 1, blank = 0
       let x = innerX + outerX + bias, y = depth + keyBias
       if(source) info.preVal[source] = hb.values[i]
-      if(!get_cell_head_is_valid(info.preVal, info.data)) {
+      if(!get_cell_head_is_valid(info.preVal, info.data) && hb.attrName) {
         delete info.preVal[source]
         continue
       }

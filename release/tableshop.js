@@ -22815,7 +22815,7 @@ var gen_inter_row_table = function (interRowTable, rowHeader, extra, width, dept
             };
             if (source)
                 extra.preVal[source] = rh.values[i];
-            if (!get_cell_head_is_valid(extra.preVal, extra.data)) {
+            if (!get_cell_head_is_valid(extra.preVal, extra.data) && rh.attrName) {
                 delete extra.preVal[source];
                 continue;
             }
@@ -22954,7 +22954,7 @@ var gen_inter_column_table = function (interColumnTable, columnHeader, extra, wi
             };
             if (source)
                 extra.preVal[source] = ch.values[i];
-            if (!get_cell_head_is_valid(extra.preVal, extra.data)) {
+            if (!get_cell_head_is_valid(extra.preVal, extra.data) && ch.attrName) {
                 delete extra.preVal[source];
                 continue;
             }
@@ -23121,7 +23121,7 @@ var gen_blank_facet_table = function (rawTable, header, info, depth, outerX, bia
             var x = innerX + outerX + bias, y = depth + keyBias;
             if (source)
                 info.preVal[source] = hb.values[i];
-            if (!get_cell_head_is_valid(info.preVal, info.data)) {
+            if (!get_cell_head_is_valid(info.preVal, info.data) && hb.attrName) {
                 delete info.preVal[source];
                 continue;
             }
