@@ -22350,12 +22350,10 @@ var style_selector_fill = function (bId, loc, styles, idDict) {
                 res = deepAssign(res, styles[sel]);
         }
         else if (sel === SelectorType.SUM_TITLE) {
-            if (idDict.rowDict[bId] || idDict.colDict[bId]) {
-                if (idDict.rowDict[bId].function === FUNC_SUM)
-                    res = deepAssign(res, styles[sel]);
-                else if (idDict.colDict[bId].function === FUNC_SUM)
-                    res = deepAssign(res, styles[sel]);
-            }
+            if (idDict.rowDict[bId] && idDict.rowDict[bId].function === FUNC_SUM)
+                res = deepAssign(res, styles[sel]);
+            else if (idDict.colDict[bId] && idDict.colDict[bId].function === FUNC_SUM)
+                res = deepAssign(res, styles[sel]);
         }
         else if (sel === SelectorType.SUM_CELL) {
             if (idDict.cellDict[bId]) {
