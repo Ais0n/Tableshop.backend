@@ -2050,16 +2050,17 @@ const table2excel = ({table, url}) => {
   writeFileXLSX(wb, url+'.xlsx')
 }
 
-const fill_header_spec = (val, extra, depth=0) => {
+const fill_header_spec = (val, extra, name="entity", depth=0) => {
   if(val[depth]===undefined) return undefined
   let spec = {
+    attrName: `${name}${depth+1}`,
     blockId: genBid(),
     values: new Array(),
     children: new Array()
   }
   extra.pId = spec.blockId
   for(let v in val[depth]) spec.values.push(v)
-  let cSpec = fill_header_spec(val, extra, depth+1)
+  let cSpec = fill_header_spec(val, extra, name, depth+1)
   if(cSpec !== undefined) spec.children.push(cSpec)
   return spec
 }
@@ -2076,7 +2077,18 @@ const parseTable = async (file: ArrayBuffer, mode: string) => {
     rowHeader: new Array(),
     columnHeader: new Array(),
     cell: new Array(),
+    data: new Array(),
   } 
+  if(ws["!merges"]) {
+    for(let {s, e} of ws["!merges"]) {
+      if(data[s.r][s.c]) {
+        let tmp = data[s.r][s.c]
+        for(let i=s.r; i<=e.r; i++) {
+          for(let j=s.c; j<=e.c; j++) data[i][j] = tmp
+        }
+      }
+    }
+  }
   if(mode === "crosstab") {
     let rowDepth = 1, colDepth = 0
     let cLen = 0, rLen = data.length
@@ -2116,11 +2128,13 @@ const parseTable = async (file: ArrayBuffer, mode: string) => {
         if(data[i][j]) colVal[i][data[i][j]] = data[i][j]
       }
     }
+    console.log('object', rowVal, colVal);
     let extraR = {pId: undefined}, extraC = {pId: undefined}
-    let rh = fill_header_spec(rowVal, extraR), ch = fill_header_spec(colVal, extraC)
+    let rh = fill_header_spec(rowVal, extraR, "rowEntity"), ch = fill_header_spec(colVal, extraC, "colEntity")
     if(rh !== undefined) spec.rowHeader.push(rh)
     if(ch !== undefined) spec.columnHeader.push(ch)
     let c = {
+      attrName: "cell1",
       blockId: genBid(),
       rowParentId: extraR.pId,
       colParentId: extraC.pId,
@@ -2129,11 +2143,22 @@ const parseTable = async (file: ArrayBuffer, mode: string) => {
     }
     for(let i=colDepth; i<rLen; i++) {
       for(let j=rowDepth; j<cLen; j++) {
+        let tmp = {} as any
         if(!isNaN(Number(data[i][j]))) {
           c.dataType = DataType.NUMERICAL
           c.values.push(Number(data[i][j]))
+          for(let k=0; k<rowDepth; k++) tmp[`rowEntity${k+1}`] = data[i][k]
+          for(let k=0; k<colDepth; k++) tmp[`colEntity${k+1}`] = data[k][j]
+          tmp[c.attrName] = Number(data[i][j])
+          spec.data.push(tmp)
         } else {
-          if(data[i][j]) c.values.push(data[i][j])
+          if(data[i][j]) {
+            c.values.push(data[i][j])
+            for(let k=0; k<rowDepth; k++) tmp[`rowEntity${k+1}`] = data[i][k]
+            for(let k=0; k<colDepth; k++) tmp[`colEntity${k+1}`] = data[k][j]
+            tmp[c.attrName] = data[i][j]
+            spec.data.push(tmp)
+          }
         }
       }
     }
@@ -2189,12 +2214,13 @@ const parseTable = async (file: ArrayBuffer, mode: string) => {
     }
     console.log('object', rowVal, colVal);
     let extraR = {pId: undefined}, extraC = {pId: undefined}
-    let rh = fill_header_spec(rowVal, extraR), ch = fill_header_spec(colVal, extraC)
+    let rh = fill_header_spec(rowVal, extraR, "rowEntity"), ch = fill_header_spec(colVal, extraC, "colEntity")
     if(rh !== undefined) spec.rowHeader.push(rh)
     if(ch !== undefined) spec.columnHeader.push(ch)
     
     for(let j=rowDepth; j<cLen; j++) {
       let c = {
+        attrName: `cell${j+1-rowDepth}`,
         blockId: genBid(),
         rowParentId: extraR.pId,
         colParentId: extraC.pId,
@@ -2202,18 +2228,28 @@ const parseTable = async (file: ArrayBuffer, mode: string) => {
         values: new Array()
       }
       for(let i=colDepth; i<rLen; i++) {
+        let tmp = {} as any
         if(!isNaN(Number(data[i][j]))) {
           c.dataType = DataType.NUMERICAL
           c.values.push(Number(data[i][j]))
+          for(let k=0; k<rowDepth; k++) tmp[`rowEntity${k+1}`] = data[i][k]
+          for(let k=0; k<colDepth; k++) tmp[`colEntity${k+1}`] = data[k][j]
+          tmp[c.attrName] = Number(data[i][j])
+          spec.data.push(tmp)
         } else {
-          if(data[i][j]) c.values.push(data[i][j])
+          if(data[i][j]) {
+            c.values.push(data[i][j])
+            for(let k=0; k<rowDepth; k++) tmp[`rowEntity${k+1}`] = data[i][k]
+            for(let k=0; k<colDepth; k++) tmp[`colEntity${k+1}`] = data[k][j]
+            tmp[c.attrName] = data[i][j]
+            spec.data.push(tmp)
+          }
         }
       }
       if(extraR.pId!==undefined || extraC.pId!==undefined) spec.cell.push(c)
     }
-    
-    console.log('hd', spec);
   }
+  console.log('hd', spec);
   return spec
 }
 

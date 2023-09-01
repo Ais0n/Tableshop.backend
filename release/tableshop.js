@@ -24306,11 +24306,13 @@ var table2excel = function (_a) {
     utils$1.book_append_sheet(wb, sheet, 'TableShop Output');
     writeFileSyncXLSX(wb, url + '.xlsx');
 };
-var fill_header_spec = function (val, extra, depth) {
+var fill_header_spec = function (val, extra, name, depth) {
+    if (name === void 0) { name = "entity"; }
     if (depth === void 0) { depth = 0; }
     if (val[depth] === undefined)
         return undefined;
     var spec = {
+        attrName: "".concat(name).concat(depth + 1),
         blockId: genBid(),
         values: new Array(),
         children: new Array()
@@ -24318,14 +24320,14 @@ var fill_header_spec = function (val, extra, depth) {
     extra.pId = spec.blockId;
     for (var v in val[depth])
         spec.values.push(v);
-    var cSpec = fill_header_spec(val, extra, depth + 1);
+    var cSpec = fill_header_spec(val, extra, name, depth + 1);
     if (cSpec !== undefined)
         spec.children.push(cSpec);
     return spec;
 };
 var parseTable = function (file, mode) { return __awaiter(void 0, void 0, void 0, function () {
-    var wb, ws, data, spec, rowDepth, colDepth, cLen, rLen, _i, data_4, d, tmpR, tmpC, i, i, _a, _b, _c, s, e, rowVal, colVal, j, i, i, j, extraR, extraC, rh, ch, c, i, j, rowDepth, colDepth, cLen, rLen, _d, data_5, d, _e, _f, _g, s, e, tmpR, i, j, tmpDict, flag, i, rowVal, colVal, j, i, i, j, extraR, extraC, rh, ch, j, c, i;
-    return __generator(this, function (_h) {
+    var wb, ws, data, spec, _i, _a, _b, s, e, tmp, i, j, rowDepth, colDepth, cLen, rLen, _c, data_4, d, tmpR, tmpC, i, i, _d, _e, _f, s, e, rowVal, colVal, j, i, i, j, extraR, extraC, rh, ch, c, i, j, tmp, k, k, k, k, rowDepth, colDepth, cLen, rLen, _g, data_5, d, _h, _j, _k, s, e, tmpR, i, j, tmpDict, flag, i, rowVal, colVal, j, i, i, j, extraR, extraC, rh, ch, j, c, i, tmp, k, k, k, k;
+    return __generator(this, function (_l) {
         wb = readSync(file), ws = wb.Sheets[wb.SheetNames[0]];
         console.log("workBook", wb);
         console.log("workSheet", ws);
@@ -24337,12 +24339,25 @@ var parseTable = function (file, mode) { return __awaiter(void 0, void 0, void 0
             rowHeader: new Array(),
             columnHeader: new Array(),
             cell: new Array(),
+            data: new Array(),
         };
+        if (ws["!merges"]) {
+            for (_i = 0, _a = ws["!merges"]; _i < _a.length; _i++) {
+                _b = _a[_i], s = _b.s, e = _b.e;
+                if (data[s.r][s.c]) {
+                    tmp = data[s.r][s.c];
+                    for (i = s.r; i <= e.r; i++) {
+                        for (j = s.c; j <= e.c; j++)
+                            data[i][j] = tmp;
+                    }
+                }
+            }
+        }
         if (mode === "crosstab") {
             rowDepth = 1, colDepth = 0;
             cLen = 0, rLen = data.length;
-            for (_i = 0, data_4 = data; _i < data_4.length; _i++) {
-                d = data_4[_i];
+            for (_c = 0, data_4 = data; _c < data_4.length; _c++) {
+                d = data_4[_c];
                 if (cLen < d.length)
                     cLen = d.length;
             }
@@ -24362,8 +24377,8 @@ var parseTable = function (file, mode) { return __awaiter(void 0, void 0, void 0
             }
             else {
                 if (ws["!merges"]) {
-                    for (_a = 0, _b = ws["!merges"]; _a < _b.length; _a++) {
-                        _c = _b[_a], s = _c.s, e = _c.e;
+                    for (_d = 0, _e = ws["!merges"]; _d < _e.length; _d++) {
+                        _f = _e[_d], s = _f.s, e = _f.e;
                         if (s.r === 0 && s.c === 0) {
                             rowDepth = e.c;
                             colDepth = e.r;
@@ -24387,13 +24402,15 @@ var parseTable = function (file, mode) { return __awaiter(void 0, void 0, void 0
                         colVal[i][data[i][j]] = data[i][j];
                 }
             }
+            console.log('object', rowVal, colVal);
             extraR = { pId: undefined }, extraC = { pId: undefined };
-            rh = fill_header_spec(rowVal, extraR), ch = fill_header_spec(colVal, extraC);
+            rh = fill_header_spec(rowVal, extraR, "rowEntity"), ch = fill_header_spec(colVal, extraC, "colEntity");
             if (rh !== undefined)
                 spec.rowHeader.push(rh);
             if (ch !== undefined)
                 spec.columnHeader.push(ch);
             c = {
+                attrName: "cell1",
                 blockId: genBid(),
                 rowParentId: extraR.pId,
                 colParentId: extraC.pId,
@@ -24402,13 +24419,27 @@ var parseTable = function (file, mode) { return __awaiter(void 0, void 0, void 0
             };
             for (i = colDepth; i < rLen; i++) {
                 for (j = rowDepth; j < cLen; j++) {
+                    tmp = {};
                     if (!isNaN(Number(data[i][j]))) {
                         c.dataType = DataType.NUMERICAL;
                         c.values.push(Number(data[i][j]));
+                        for (k = 0; k < rowDepth; k++)
+                            tmp["rowEntity".concat(k + 1)] = data[i][k];
+                        for (k = 0; k < colDepth; k++)
+                            tmp["colEntity".concat(k + 1)] = data[k][j];
+                        tmp[c.attrName] = Number(data[i][j]);
+                        spec.data.push(tmp);
                     }
                     else {
-                        if (data[i][j])
+                        if (data[i][j]) {
                             c.values.push(data[i][j]);
+                            for (k = 0; k < rowDepth; k++)
+                                tmp["rowEntity".concat(k + 1)] = data[i][k];
+                            for (k = 0; k < colDepth; k++)
+                                tmp["colEntity".concat(k + 1)] = data[k][j];
+                            tmp[c.attrName] = data[i][j];
+                            spec.data.push(tmp);
+                        }
                     }
                 }
             }
@@ -24418,14 +24449,14 @@ var parseTable = function (file, mode) { return __awaiter(void 0, void 0, void 0
         else if (mode === "relational") {
             rowDepth = 0, colDepth = 1;
             cLen = 0, rLen = data.length;
-            for (_d = 0, data_5 = data; _d < data_5.length; _d++) {
-                d = data_5[_d];
+            for (_g = 0, data_5 = data; _g < data_5.length; _g++) {
+                d = data_5[_g];
                 if (cLen < d.length)
                     cLen = d.length;
             }
             if (ws["!merges"]) {
-                for (_e = 0, _f = ws["!merges"]; _e < _f.length; _e++) {
-                    _g = _f[_e], s = _g.s, e = _g.e;
+                for (_h = 0, _j = ws["!merges"]; _h < _j.length; _h++) {
+                    _k = _j[_h], s = _k.s, e = _k.e;
                     if (s.r === 0 && s.c === 0) {
                         colDepth = e.r;
                         break;
@@ -24475,13 +24506,14 @@ var parseTable = function (file, mode) { return __awaiter(void 0, void 0, void 0
             }
             console.log('object', rowVal, colVal);
             extraR = { pId: undefined }, extraC = { pId: undefined };
-            rh = fill_header_spec(rowVal, extraR), ch = fill_header_spec(colVal, extraC);
+            rh = fill_header_spec(rowVal, extraR, "rowEntity"), ch = fill_header_spec(colVal, extraC, "colEntity");
             if (rh !== undefined)
                 spec.rowHeader.push(rh);
             if (ch !== undefined)
                 spec.columnHeader.push(ch);
             for (j = rowDepth; j < cLen; j++) {
                 c = {
+                    attrName: "cell".concat(j + 1 - rowDepth),
                     blockId: genBid(),
                     rowParentId: extraR.pId,
                     colParentId: extraC.pId,
@@ -24489,20 +24521,34 @@ var parseTable = function (file, mode) { return __awaiter(void 0, void 0, void 0
                     values: new Array()
                 };
                 for (i = colDepth; i < rLen; i++) {
+                    tmp = {};
                     if (!isNaN(Number(data[i][j]))) {
                         c.dataType = DataType.NUMERICAL;
                         c.values.push(Number(data[i][j]));
+                        for (k = 0; k < rowDepth; k++)
+                            tmp["rowEntity".concat(k + 1)] = data[i][k];
+                        for (k = 0; k < colDepth; k++)
+                            tmp["colEntity".concat(k + 1)] = data[k][j];
+                        tmp[c.attrName] = Number(data[i][j]);
+                        spec.data.push(tmp);
                     }
                     else {
-                        if (data[i][j])
+                        if (data[i][j]) {
                             c.values.push(data[i][j]);
+                            for (k = 0; k < rowDepth; k++)
+                                tmp["rowEntity".concat(k + 1)] = data[i][k];
+                            for (k = 0; k < colDepth; k++)
+                                tmp["colEntity".concat(k + 1)] = data[k][j];
+                            tmp[c.attrName] = data[i][j];
+                            spec.data.push(tmp);
+                        }
                     }
                 }
                 if (extraR.pId !== undefined || extraC.pId !== undefined)
                     spec.cell.push(c);
             }
-            console.log('hd', spec);
         }
+        console.log('hd', spec);
         return [2 /*return*/, spec];
     });
 }); };
