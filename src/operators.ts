@@ -848,6 +848,7 @@ const gen_blank_facet_table = (rawTable, header, info, depth, outerX,
       }
 
       innerX += iterCount
+      delete info.preVal[source]
       pos++
       if(maxLen < len) maxLen = len
       subFacetSpan += tmpFacetSpan

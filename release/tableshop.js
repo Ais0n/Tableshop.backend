@@ -23218,6 +23218,7 @@ var gen_blank_facet_table = function (rawTable, header, info, depth, outerX, bia
                 len += delta;
             }
             innerX += iterCount;
+            delete info.preVal[source];
             pos++;
             if (maxLen < len)
                 maxLen = len;
