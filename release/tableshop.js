@@ -23185,11 +23185,18 @@ var gen_blank_facet_table = function (rawTable, header, info, depth, outerX, bia
                     }
                 }
                 if (rawTable[x + j][y + beforeBias] !== undefined && j === 0 && hb.blankLine) {
-                    if (beforeBias > 0)
+                    // if(beforeBias > 0) rawTable[x+j][y].hasBlank = true
+                    // rawTable[x+j][y+beforeBias].hasBlank = true
+                    // if(afterBias > 0) rawTable[x+j][y+beforeBias+afterBias].hasBlank = true
+                    if (beforeBias > 0) {
                         rawTable[x + j][y].hasBlank = true;
-                    rawTable[x + j][y + beforeBias].hasBlank = true;
-                    if (afterBias > 0)
-                        rawTable[x + j][y + beforeBias + afterBias].hasBlank = true;
+                        rawTable[x + j][y].blankLen = len - y;
+                        delete rawTable[x + j][y + beforeBias].hasBlank;
+                    }
+                    else {
+                        rawTable[x + j][y + beforeBias].hasBlank = true;
+                        rawTable[x + j][y + beforeBias].blankLen = len - y;
+                    }
                 }
             }
             if (hb.facet > 1) {
@@ -23228,7 +23235,7 @@ var gen_blank_facet_table = function (rawTable, header, info, depth, outerX, bia
             subFacetSpan = Math.ceil(subFacetSpan / hb.facet);
         facetSpan += subFacetSpan;
         if (hb.blankLine)
-            blankLine += Math.ceil(hb.values.length / hb.facet);
+            blankLine += Math.ceil(pos / hb.facet);
     }
     var delta1 = isPreMerge ? 1 : 0;
     return [innerX + delta1, maxLen, facetSpan + delta1, blankLine];
@@ -23266,23 +23273,23 @@ var gen_final_table = function (table, tableClass) {
                 t.push({ rowSpan: spanList[i + tmp], colSpan: 1 });
         }
     }
+    console.log('bf table', deepAssign({}, table));
     var finalTable = Array.from({ length: table.length }, function () { return new Array(); });
     var locMap = new Array(maxLength).fill(0);
     for (var i = 0; i < table.length; i++) {
-        var t = table[i], isBlank = false;
+        var t = table[i];
         for (var j = 0; j < table[i].length; j++) {
             if (table[i][j] === undefined) {
                 if (i + 1 >= table.length)
                     throw new Error("Final Table: Over Boundary");
-                if (isBlank) {
-                    if (finalTable[locMap[j]] === undefined)
-                        finalTable[locMap[j]] = new Array();
-                    if (tableClass === ROW_TABLE)
-                        finalTable[locMap[j]].push({ rowSpan: 1, colSpan: table[i + 1][j].colSpan });
-                    else if (tableClass === COLUM_TABLE)
-                        finalTable[locMap[j]].push({ rowSpan: table[i + 1][j].rowSpan, colSpan: 1 });
-                    locMap[j]++;
-                }
+                // if(isBlank) {
+                //   if(finalTable[locMap[j]] === undefined) finalTable[locMap[j]] = new Array()
+                //   if(tableClass === ROW_TABLE) 
+                //     finalTable[locMap[j]].push({ rowSpan: 1, colSpan: table[i+1][j].colSpan})
+                //   else if(tableClass === COLUM_TABLE) 
+                //     finalTable[locMap[j]].push({ rowSpan: table[i+1][j].rowSpan, colSpan: 1})
+                //   locMap[j]++
+                // }
                 if (finalTable[locMap[j]] === undefined)
                     finalTable[locMap[j]] = new Array();
                 if (tableClass === ROW_TABLE)
@@ -23293,18 +23300,35 @@ var gen_final_table = function (table, tableClass) {
             }
             else if (!table[i][j].isDelete) {
                 if (table[i][j].hasBlank) {
+                    var blankLen = table[i][j].blankLen;
                     delete table[i][j].hasBlank;
-                    isBlank = true;
+                    delete table[i][j].blankLen;
+                    if (tableClass === ROW_TABLE) {
+                        for (var k = j; k < j + blankLen; k++) {
+                            if (finalTable[locMap[k]] === undefined)
+                                finalTable[locMap[k]] = new Array();
+                            finalTable[locMap[k]].push({ rowSpan: 1, colSpan: table[i][k].colSpan });
+                            locMap[k]++;
+                        }
+                    }
+                    else if (tableClass === COLUM_TABLE) {
+                        for (var k = j; k < j + blankLen; k++) {
+                            if (finalTable[locMap[k]] === undefined)
+                                finalTable[locMap[k]] = new Array();
+                            finalTable[locMap[k]].push({ rowSpan: table[i][k].rowSpan, colSpan: 1 });
+                            locMap[k]++;
+                        }
+                    }
+                    // isBlank = true
                 }
-                if (isBlank) {
-                    if (finalTable[locMap[j]] === undefined)
-                        finalTable[locMap[j]] = new Array();
-                    if (tableClass === ROW_TABLE)
-                        finalTable[locMap[j]].push({ rowSpan: 1, colSpan: table[i][j].colSpan });
-                    else if (tableClass === COLUM_TABLE)
-                        finalTable[locMap[j]].push({ rowSpan: table[i][j].rowSpan, colSpan: 1 });
-                    locMap[j]++;
-                }
+                // if(isBlank) {
+                //   if(finalTable[locMap[j]] === undefined) finalTable[locMap[j]] = new Array()
+                //   if(tableClass === ROW_TABLE) 
+                //     finalTable[locMap[j]].push({ rowSpan: 1, colSpan: table[i][j].colSpan})
+                //   else if(tableClass === COLUM_TABLE) 
+                //     finalTable[locMap[j]].push({ rowSpan: table[i][j].rowSpan, colSpan: 1})
+                //   locMap[j]++
+                // }
                 if (finalTable[locMap[j]] === undefined)
                     finalTable[locMap[j]] = new Array();
                 finalTable[locMap[j]].push(table[i][j]);

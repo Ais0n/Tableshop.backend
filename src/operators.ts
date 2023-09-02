@@ -817,9 +817,17 @@ const gen_blank_facet_table = (rawTable, header, info, depth, outerX,
           }          
         }
         if(rawTable[x+j][y+beforeBias] !== undefined && j===0 && hb.blankLine) {
-          if(beforeBias > 0) rawTable[x+j][y].hasBlank = true
-          rawTable[x+j][y+beforeBias].hasBlank = true
-          if(afterBias > 0) rawTable[x+j][y+beforeBias+afterBias].hasBlank = true
+          // if(beforeBias > 0) rawTable[x+j][y].hasBlank = true
+          // rawTable[x+j][y+beforeBias].hasBlank = true
+          // if(afterBias > 0) rawTable[x+j][y+beforeBias+afterBias].hasBlank = true
+          if(beforeBias > 0) {
+            rawTable[x+j][y].hasBlank = true
+            rawTable[x+j][y].blankLen = len - y
+            delete rawTable[x+j][y+beforeBias].hasBlank
+          } else {
+            rawTable[x+j][y+beforeBias].hasBlank = true
+            rawTable[x+j][y+beforeBias].blankLen = len - y
+          }
         }
       }
       if(hb.facet > 1) {
@@ -855,7 +863,7 @@ const gen_blank_facet_table = (rawTable, header, info, depth, outerX,
     }
     if(hb.facet>1) subFacetSpan = Math.ceil(subFacetSpan / hb.facet)
     facetSpan += subFacetSpan
-    if(hb.blankLine) blankLine += Math.ceil(hb.values.length / hb.facet)
+    if(hb.blankLine) blankLine += Math.ceil(pos / hb.facet)
   }
   let delta1 = isPreMerge ? 1 : 0
   return [innerX+delta1, maxLen, facetSpan+delta1, blankLine]
@@ -886,6 +894,7 @@ const gen_final_table = (table, tableClass) => {
       else if(tableClass === COLUM_TABLE) t.push({rowSpan: spanList[i+tmp], colSpan: 1})
     }
   }
+  console.log('bf table', deepAssign({}, table));
   let finalTable = Array.from({length:table.length}, () => new Array())
   let locMap = new Array(maxLength).fill(0)
   for(let i=0; i<table.length; i++) {
@@ -893,14 +902,14 @@ const gen_final_table = (table, tableClass) => {
     for(let j=0; j<table[i].length; j++) {
       if(table[i][j] === undefined) {
         if(i+1 >= table.length) throw new Error("Final Table: Over Boundary")
-        if(isBlank) {
-          if(finalTable[locMap[j]] === undefined) finalTable[locMap[j]] = new Array()
-          if(tableClass === ROW_TABLE) 
-            finalTable[locMap[j]].push({ rowSpan: 1, colSpan: table[i+1][j].colSpan})
-          else if(tableClass === COLUM_TABLE) 
-            finalTable[locMap[j]].push({ rowSpan: table[i+1][j].rowSpan, colSpan: 1})
-          locMap[j]++
-        }
+        // if(isBlank) {
+        //   if(finalTable[locMap[j]] === undefined) finalTable[locMap[j]] = new Array()
+        //   if(tableClass === ROW_TABLE) 
+        //     finalTable[locMap[j]].push({ rowSpan: 1, colSpan: table[i+1][j].colSpan})
+        //   else if(tableClass === COLUM_TABLE) 
+        //     finalTable[locMap[j]].push({ rowSpan: table[i+1][j].rowSpan, colSpan: 1})
+        //   locMap[j]++
+        // }
         if(finalTable[locMap[j]] === undefined) finalTable[locMap[j]] = new Array()
         if(tableClass === ROW_TABLE) 
           finalTable[locMap[j]].push({ rowSpan: 1, colSpan: table[i+1][j].colSpan})
@@ -909,17 +918,32 @@ const gen_final_table = (table, tableClass) => {
         locMap[j]++
       } else if(!table[i][j].isDelete){
         if(table[i][j].hasBlank) {
+          let blankLen = table[i][j].blankLen
           delete table[i][j].hasBlank
-          isBlank = true
+          delete table[i][j].blankLen
+          if(tableClass === ROW_TABLE) {
+            for(let k=j; k<j+blankLen; k++) {
+              if(finalTable[locMap[k]] === undefined) finalTable[locMap[k]] = new Array()
+              finalTable[locMap[k]].push({ rowSpan: 1, colSpan: table[i][k].colSpan})
+              locMap[k]++
+            }
+          } else if(tableClass === COLUM_TABLE) {
+            for(let k=j; k<j+blankLen; k++) {
+              if(finalTable[locMap[k]] === undefined) finalTable[locMap[k]] = new Array()
+              finalTable[locMap[k]].push({ rowSpan: table[i][k].rowSpan, colSpan: 1})
+              locMap[k]++
+            }
+          }
+          // isBlank = true
         }
-        if(isBlank) {
-          if(finalTable[locMap[j]] === undefined) finalTable[locMap[j]] = new Array()
-          if(tableClass === ROW_TABLE) 
-            finalTable[locMap[j]].push({ rowSpan: 1, colSpan: table[i][j].colSpan})
-          else if(tableClass === COLUM_TABLE) 
-            finalTable[locMap[j]].push({ rowSpan: table[i][j].rowSpan, colSpan: 1})
-          locMap[j]++
-        }
+        // if(isBlank) {
+        //   if(finalTable[locMap[j]] === undefined) finalTable[locMap[j]] = new Array()
+        //   if(tableClass === ROW_TABLE) 
+        //     finalTable[locMap[j]].push({ rowSpan: 1, colSpan: table[i][j].colSpan})
+        //   else if(tableClass === COLUM_TABLE) 
+        //     finalTable[locMap[j]].push({ rowSpan: table[i][j].rowSpan, colSpan: 1})
+        //   locMap[j]++
+        // }
         if(finalTable[locMap[j]] === undefined) finalTable[locMap[j]] = new Array()
         finalTable[locMap[j]].push(table[i][j])
         if(tableClass === ROW_TABLE)
