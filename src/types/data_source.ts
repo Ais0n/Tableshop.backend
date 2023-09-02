@@ -62,6 +62,12 @@ export enum BorderPosition {
   RIGHT = "Right"
 }
 
+export enum BorderStyle {
+  DOUBLE = "double",
+  SINGLE = "solid",
+  NONE = "none",
+}
+
 export enum FontUnderscore {
   None = 0,
   Single = 1,
@@ -85,7 +91,8 @@ export interface Key {
 export interface Border {
   color: Color;
   width: number,
-  position: BorderPosition
+  position: BorderPosition,
+  style: BorderStyle,
 }
 
 export interface Background {

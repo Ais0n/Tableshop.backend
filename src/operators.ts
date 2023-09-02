@@ -3,7 +3,7 @@ import {
   AttrInfoUnit, AttrInfo, DataType,
   Key, KEY_ALPHABETIC, KEY_ROMAN, KEY_NUMERICAL, Pattern, Position,
   GridMerge,
-  BorderPosition, Border, FontUnderscore, FontWeight, Font, Background,
+  BorderPosition, BorderStyle, Border, FontUnderscore, FontWeight, Font, Background,
   HeaderBlock, CellBlock, HeaderChannel, CellChannel, StyleClass,
   FUNC_SUM,
   CROSS_TABLE, ROW_TABLE, COLUM_TABLE, 
@@ -150,7 +150,7 @@ const style_process = (style: StyleClass) => {
   // Border
   if(border) {
     let positionKey = "", bdFormat = new Array()
-    let bdWidth = border.width, bdStyle = "solid", bdColor = border.color
+    let bdWidth = border.width, bdStyle = border.style, bdColor = border.color
     switch (border.position) {
       case BorderPosition.TOP:
         positionKey = "border-top"
@@ -169,7 +169,10 @@ const style_process = (style: StyleClass) => {
         break;
     }
     if(bdWidth) bdFormat.push(bdWidth + "px")
-    if(bdStyle) bdFormat.push(bdStyle)
+    if(bdStyle) {
+      if(bdStyle===BorderStyle.DOUBLE || bdStyle===BorderStyle.SINGLE || 
+        bdStyle===BorderStyle.NONE) bdFormat.push(bdStyle)
+    }
     if(bdColor) bdFormat.push(bdColor)
     output[positionKey] = bdFormat.join(" ")
   }

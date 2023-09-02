@@ -109,6 +109,12 @@ var BorderPosition;
     BorderPosition["LEFT"] = "Left";
     BorderPosition["RIGHT"] = "Right";
 })(BorderPosition || (BorderPosition = {}));
+var BorderStyle;
+(function (BorderStyle) {
+    BorderStyle["DOUBLE"] = "double";
+    BorderStyle["SINGLE"] = "solid";
+    BorderStyle["NONE"] = "none";
+})(BorderStyle || (BorderStyle = {}));
 var FontUnderscore;
 (function (FontUnderscore) {
     FontUnderscore[FontUnderscore["None"] = 0] = "None";
@@ -22474,7 +22480,7 @@ var style_process = function (style) {
     // Border
     if (border) {
         var positionKey = "", bdFormat = new Array();
-        var bdWidth = border.width, bdStyle = "solid", bdColor = border.color;
+        var bdWidth = border.width, bdStyle = border.style, bdColor = border.color;
         switch (border.position) {
             case BorderPosition.TOP:
                 positionKey = "border-top";
@@ -22494,8 +22500,11 @@ var style_process = function (style) {
         }
         if (bdWidth)
             bdFormat.push(bdWidth + "px");
-        if (bdStyle)
-            bdFormat.push(bdStyle);
+        if (bdStyle) {
+            if (bdStyle === BorderStyle.DOUBLE || bdStyle === BorderStyle.SINGLE ||
+                bdStyle === BorderStyle.NONE)
+                bdFormat.push(bdStyle);
+        }
         if (bdColor)
             bdFormat.push(bdColor);
         output[positionKey] = bdFormat.join(" ");
