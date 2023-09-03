@@ -353,6 +353,7 @@ const get_header_id_dict = (channel?: HeaderChannel, title?, depth = 0, preFEnd 
     info[hb.blockId] = {
       attrName: hb.attrName,
       function: hb.function,
+      values: hb.values,
       hasBlank: hb.blankLine, 
       gridMerge: hb.gridMerge,
       locList: new Array(),
@@ -427,17 +428,24 @@ const get_key = (key: Key, level: number, preKey: string) => {
 
 // Aggregate Function
 // TODO: add more function
-const aggregate_use = (preVal, data, key, funcName: string = FUNC_SUM) => {
-  if(funcName === FUNC_SUM) return aggregate_sum(preVal, data, key)
+const aggregate_use = (preVal, data, key, valDict, funcName: string = FUNC_SUM) => {
+  if(funcName === FUNC_SUM) return aggregate_sum(preVal, data, key, valDict)
 }
 
-const aggregate_sum = (preVal, data, key) => {
+const aggregate_sum = (preVal, data, key, valDict) => {
   let ans: number = 0, cnt: number = 0
   for(let d of data) {
     let flag = true
     for(let k in preVal) {
       if(d[k] !== preVal[k]) {
         flag = false
+        break
+      }
+    }
+    for(let v in valDict) {
+      let res = valDict[v].indexOf(d[v])
+      if(res === -1) {
+        flag = false  
         break
       }
     }
@@ -555,7 +563,7 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
               if(!agg_type_check(extra.attrInfo, c.attrName)) throw new Error("Function can only be used to numerical>")
               delete extra.preVal[source]
               extra.cellTable[innerX+outerX+bias].push({
-                value: aggregate_use(extra.preVal, extra.data, c.attrName, FUNC_SUM),
+                value: aggregate_use(extra.preVal, extra.data, c.attrName, extra.valDict, FUNC_SUM),
                 source: c.attrName,
                 sourceBlockId: c.blockId,
                 type: BlockType.CELL,
@@ -687,7 +695,7 @@ const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: nu
               if(!agg_type_check(extra.attrInfo, c.attrName)) throw new Error("Function can only be used to numerical>")
               delete extra.preVal[source]
               extra.cellTable[innerY+outerY+bias].push({
-                value: aggregate_use(extra.preVal, extra.data, c.attrName, FUNC_SUM),
+                value: aggregate_use(extra.preVal, extra.data, c.attrName, extra.valDict, FUNC_SUM),
                 source: c.attrName,
                 sourceBlockId: c.blockId,
                 type: BlockType.CELL,
@@ -724,7 +732,7 @@ const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: nu
 }
 
 // generate intermediate cross table
-const gen_inter_cross_table = (interCrossTable, rowExtra, colExtra, cell) => {
+const gen_inter_cross_table = (interCrossTable, rowExtra, colExtra, cell, valDict) => {
   let rowValIdx = rowExtra.valIdx, colValIdx = colExtra.valIdx
   for(let i=0; i<rowValIdx.length; i++) {
     for(let j=0; j<colValIdx.length; j++) {
@@ -737,7 +745,7 @@ const gen_inter_cross_table = (interCrossTable, rowExtra, colExtra, cell) => {
             if(!agg_type_check(rowExtra.attrInfo, c.attrName)) throw new Error("Function can only be used to numerical>")
             interCrossTable[x][y] = {
               value: aggregate_use({...rowValIdx[i].preVal, ...colValIdx[j].preVal}, rowExtra.data, 
-                c.attrName, FUNC_SUM),
+                c.attrName, valDict, FUNC_SUM),
               // source: c.attrName,
               sourceBlockId: c.blockId,
               rowSpan: 1, colSpan: 1,
@@ -884,7 +892,7 @@ const gen_final_table = (table, tableClass) => {
       h++
     }
   }
-  for(let i=0; i<spanList.length; i++) if(spanList[i]===undefined) spanList[i] = 1
+  for(let i=0; i<maxLength; i++) if(spanList[i]===undefined) spanList[i] = 1
   // fill each length
   for(let t of table) {
     let resLen = maxLength - t.length, tmp = t.length 
@@ -1389,6 +1397,8 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
       if(layersBias[i][1] > 0) headKeySpan.push(1)
     }
     console.log("head key span", headKeySpan);
+    let valDict = {}
+    for(let d of Object.values(idDict.rowDict) as any) if(d.attrName) valDict[d.attrName] = d.values
     let extra = {
       preVal: {},
       data: data.values,
@@ -1396,7 +1406,8 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
       cellTable: Array.from({length: rowSize}, () => new Array()),
       attrInfo,
       layersBias,
-      headSpan
+      headSpan,
+      valDict
     }
     interTable = Array.from({length: rowSize}, () => new Array(rowDepth)
                   .fill(null).map(_ => ({rowSpan: 1, colSpan: 1})))
@@ -1505,6 +1516,8 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
       if(layersBias[i][1] > 0) headKeySpan.push(1)
     }
     console.log("head key span", headKeySpan);
+    let valDict = {}
+    for(let d of Object.values(idDict.colDict) as any) if(d.attrName) valDict[d.attrName] = d.values
     let extra = {
       preVal: {},
       data: data.values,
@@ -1514,7 +1527,8 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
       rootSpan: Array.from({length: columnHeader.length}, () => new Array()),
       rootIdList: Array.from({length: columnHeader.length}, () => new Array()),
       layersBias,
-      headSpan
+      headSpan,
+      valDict
     }
     interTable = Array.from({length: colDepth}, () => new Array(colSize)
                   .fill(null).map(_ => ({rowSpan: 1, colSpan: 1})))
@@ -1678,9 +1692,10 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
     gen_inter_row_table(interTable, rowHeader, rowExtra, rowSize, 0, 0, colDepth)
     gen_inter_column_table(interTable, columnHeader, colExtra, colSize, 0, 0, rowDepth)
 
-    // console.log('row valIdx', rowExtra.valIdx)
-    // console.log('col valIdx', colExtra.valIdx);
-    gen_inter_cross_table(interTable, rowExtra, colExtra, cell)
+    let valDict = {}
+    for(let d of Object.values(idDict.rowDict) as any) if(d.attrName) valDict[d.attrName] = d.values
+    for(let d of Object.values(idDict.colDict) as any) if(d.attrName) valDict[d.attrName] = d.values
+    gen_inter_cross_table(interTable, rowExtra, colExtra, cell, valDict)
     // console.log('@', interTable)
 
     let rowPart = new Array(), colPart = new Array()

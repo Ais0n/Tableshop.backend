@@ -22670,6 +22670,7 @@ var get_header_id_dict = function (channel, title, depth, preFEnd) {
         info[hb.blockId] = {
             attrName: hb.attrName,
             function: hb.function,
+            values: hb.values,
             hasBlank: hb.blankLine,
             gridMerge: hb.gridMerge,
             locList: new Array(),
@@ -22752,18 +22753,25 @@ var get_key = function (key, level, preKey) {
 };
 // Aggregate Function
 // TODO: add more function
-var aggregate_use = function (preVal, data, key, funcName) {
+var aggregate_use = function (preVal, data, key, valDict, funcName) {
     if (funcName === void 0) { funcName = FUNC_SUM; }
     if (funcName === FUNC_SUM)
-        return aggregate_sum(preVal, data, key);
+        return aggregate_sum(preVal, data, key, valDict);
 };
-var aggregate_sum = function (preVal, data, key) {
+var aggregate_sum = function (preVal, data, key, valDict) {
     var ans = 0, cnt = 0;
     for (var _i = 0, data_3 = data; _i < data_3.length; _i++) {
         var d = data_3[_i];
         var flag = true;
         for (var k in preVal) {
             if (d[k] !== preVal[k]) {
+                flag = false;
+                break;
+            }
+        }
+        for (var v in valDict) {
+            var res = valDict[v].indexOf(d[v]);
+            if (res === -1) {
                 flag = false;
                 break;
             }
@@ -22894,7 +22902,7 @@ var gen_inter_row_table = function (interRowTable, rowHeader, extra, width, dept
                                 throw new Error("Function can only be used to numerical>");
                             delete extra.preVal[source];
                             extra.cellTable[innerX + outerX + bias].push({
-                                value: aggregate_use(extra.preVal, extra.data, c.attrName, FUNC_SUM),
+                                value: aggregate_use(extra.preVal, extra.data, c.attrName, extra.valDict, FUNC_SUM),
                                 source: c.attrName,
                                 sourceBlockId: c.blockId,
                                 type: BlockType.CELL,
@@ -23039,7 +23047,7 @@ var gen_inter_column_table = function (interColumnTable, columnHeader, extra, wi
                                 throw new Error("Function can only be used to numerical>");
                             delete extra.preVal[source];
                             extra.cellTable[innerY + outerY + bias].push({
-                                value: aggregate_use(extra.preVal, extra.data, c.attrName, FUNC_SUM),
+                                value: aggregate_use(extra.preVal, extra.data, c.attrName, extra.valDict, FUNC_SUM),
                                 source: c.attrName,
                                 sourceBlockId: c.blockId,
                                 type: BlockType.CELL,
@@ -23077,7 +23085,7 @@ var gen_inter_column_table = function (interColumnTable, columnHeader, extra, wi
     return innerY + (isPreMerge ? 1 : 0);
 };
 // generate intermediate cross table
-var gen_inter_cross_table = function (interCrossTable, rowExtra, colExtra, cell) {
+var gen_inter_cross_table = function (interCrossTable, rowExtra, colExtra, cell, valDict) {
     var rowValIdx = rowExtra.valIdx, colValIdx = colExtra.valIdx;
     for (var i = 0; i < rowValIdx.length; i++) {
         for (var j = 0; j < colValIdx.length; j++) {
@@ -23091,7 +23099,7 @@ var gen_inter_cross_table = function (interCrossTable, rowExtra, colExtra, cell)
                         if (!agg_type_check(rowExtra.attrInfo, c.attrName))
                             throw new Error("Function can only be used to numerical>");
                         interCrossTable[x][y] = {
-                            value: aggregate_use(__assign(__assign({}, rowValIdx[i].preVal), colValIdx[j].preVal), rowExtra.data, c.attrName, FUNC_SUM),
+                            value: aggregate_use(__assign(__assign({}, rowValIdx[i].preVal), colValIdx[j].preVal), rowExtra.data, c.attrName, valDict, FUNC_SUM),
                             // source: c.attrName,
                             sourceBlockId: c.blockId,
                             rowSpan: 1, colSpan: 1,
@@ -23260,7 +23268,7 @@ var gen_final_table = function (table, tableClass) {
             h++;
         }
     }
-    for (var i = 0; i < spanList.length; i++)
+    for (var i = 0; i < maxLength; i++)
         if (spanList[i] === undefined)
             spanList[i] = 1;
     // fill each length
@@ -23626,6 +23634,12 @@ var table_process = function (tbClass, data, _a) {
                 headKeySpan.push(1);
         }
         console.log("head key span", headKeySpan);
+        var valDict = {};
+        for (var _f = 0, _g = Object.values(idDict.rowDict); _f < _g.length; _f++) {
+            var d = _g[_f];
+            if (d.attrName)
+                valDict[d.attrName] = d.values;
+        }
         var extra = {
             preVal: {},
             data: data.values,
@@ -23633,7 +23647,8 @@ var table_process = function (tbClass, data, _a) {
             cellTable: Array.from({ length: rowSize }, function () { return new Array(); }),
             attrInfo: attrInfo,
             layersBias: layersBias,
-            headSpan: headSpan
+            headSpan: headSpan,
+            valDict: valDict
         };
         interTable = Array.from({ length: rowSize }, function () { return new Array(rowDepth)
             .fill(null).map(function (_) { return ({ rowSpan: 1, colSpan: 1 }); }); });
@@ -23679,8 +23694,8 @@ var table_process = function (tbClass, data, _a) {
                     interTable[i + k][j].isUsed = true;
                 }
             }
-            for (var _f = 0, _g = extra.cellTable[i]; _f < _g.length; _f++) {
-                var c = _g[_f];
+            for (var _h = 0, _j = extra.cellTable[i]; _h < _j.length; _h++) {
+                var c = _j[_h];
                 tmpLength[i]++;
                 processTable[i].push({
                     value: c.value,
@@ -23734,8 +23749,8 @@ var table_process = function (tbClass, data, _a) {
         console.log('head span', headSpan);
         var layersBias = [], totalLayer = 0;
         calc_each_key_layer(columnHeader, layersBias, 0, tbClass);
-        for (var _h = 0, layersBias_2 = layersBias; _h < layersBias_2.length; _h++) {
-            var lb = layersBias_2[_h];
+        for (var _k = 0, layersBias_2 = layersBias; _k < layersBias_2.length; _k++) {
+            var lb = layersBias_2[_k];
             totalLayer += lb[0] + lb[1];
         }
         colDepth += totalLayer;
@@ -23750,6 +23765,12 @@ var table_process = function (tbClass, data, _a) {
                 headKeySpan.push(1);
         }
         console.log("head key span", headKeySpan);
+        var valDict = {};
+        for (var _l = 0, _m = Object.values(idDict.colDict); _l < _m.length; _l++) {
+            var d = _m[_l];
+            if (d.attrName)
+                valDict[d.attrName] = d.values;
+        }
         var extra = {
             preVal: {},
             data: data.values,
@@ -23759,7 +23780,8 @@ var table_process = function (tbClass, data, _a) {
             rootSpan: Array.from({ length: columnHeader.length }, function () { return new Array(); }),
             rootIdList: Array.from({ length: columnHeader.length }, function () { return new Array(); }),
             layersBias: layersBias,
-            headSpan: headSpan
+            headSpan: headSpan,
+            valDict: valDict
         };
         interTable = Array.from({ length: colDepth }, function () { return new Array(colSize)
             .fill(null).map(function (_) { return ({ rowSpan: 1, colSpan: 1 }); }); });
@@ -23805,8 +23827,8 @@ var table_process = function (tbClass, data, _a) {
                     interTable[i][j + k].isUsed = true;
                 }
             }
-            for (var _j = 0, _k = extra.cellTable[j]; _j < _k.length; _j++) {
-                var c = _k[_j];
+            for (var _o = 0, _p = extra.cellTable[j]; _o < _p.length; _o++) {
+                var c = _p[_o];
                 tmpLength[j]++;
                 processTable[j].push({
                     value: c.value,
@@ -23861,8 +23883,8 @@ var table_process = function (tbClass, data, _a) {
         console.log('head row span', headRowSpan);
         var layersRowBias = [], totalRowLayer = 0;
         calc_each_key_layer(rowHeader, layersRowBias, 0, ROW_TABLE);
-        for (var _l = 0, layersRowBias_1 = layersRowBias; _l < layersRowBias_1.length; _l++) {
-            var lb = layersRowBias_1[_l];
+        for (var _q = 0, layersRowBias_1 = layersRowBias; _q < layersRowBias_1.length; _q++) {
+            var lb = layersRowBias_1[_q];
             totalRowLayer += lb[0] + lb[1];
         }
         rowDepth += totalRowLayer;
@@ -23900,8 +23922,8 @@ var table_process = function (tbClass, data, _a) {
         console.log('head col span', headColSpan);
         var layersColBias = [], totalColLayer = 0;
         calc_each_key_layer(columnHeader, layersColBias, 0, COLUM_TABLE);
-        for (var _m = 0, layersColBias_1 = layersColBias; _m < layersColBias_1.length; _m++) {
-            var lb = layersColBias_1[_m];
+        for (var _r = 0, layersColBias_1 = layersColBias; _r < layersColBias_1.length; _r++) {
+            var lb = layersColBias_1[_r];
             totalColLayer += lb[0] + lb[1];
         }
         colDepth += totalColLayer;
@@ -23933,9 +23955,18 @@ var table_process = function (tbClass, data, _a) {
             .fill(null).map(function (_) { return ({ rowSpan: 1, colSpan: 1 }); }); });
         gen_inter_row_table(interTable, rowHeader, rowExtra, rowSize, 0, 0, colDepth);
         gen_inter_column_table(interTable, columnHeader, colExtra, colSize, 0, 0, rowDepth);
-        // console.log('row valIdx', rowExtra.valIdx)
-        // console.log('col valIdx', colExtra.valIdx);
-        gen_inter_cross_table(interTable, rowExtra, colExtra, cell);
+        var valDict = {};
+        for (var _s = 0, _t = Object.values(idDict.rowDict); _s < _t.length; _s++) {
+            var d = _t[_s];
+            if (d.attrName)
+                valDict[d.attrName] = d.values;
+        }
+        for (var _u = 0, _v = Object.values(idDict.colDict); _u < _v.length; _u++) {
+            var d = _v[_u];
+            if (d.attrName)
+                valDict[d.attrName] = d.values;
+        }
+        gen_inter_cross_table(interTable, rowExtra, colExtra, cell, valDict);
         // console.log('@', interTable)
         var rowPart = new Array(), colPart = new Array();
         if (get_header_is_facet(columnHeader)) {
