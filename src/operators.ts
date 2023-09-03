@@ -105,7 +105,7 @@ const header_fill = (attrInfo: AttrInfo, styles: StyleClass, header?: HeaderChan
       if(!hb.style || Object.keys(hb.style).length===0) hb.style = {}
       hb.style = deepAssign(headerStyle, hb.style)
       if(hb.function !== undefined) {
-        if(hb.function === FUNC_SUM) hb.values = [FUNC_SUM]
+        if(hb.function === FUNC_SUM) hb.values = ['Total']
         else hb.values = ["Function(Unknown)"]
         continue
       }

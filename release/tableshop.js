@@ -22423,7 +22423,7 @@ var header_fill = function (attrInfo, styles, header) {
             hb.style = deepAssign(headerStyle, hb.style);
             if (hb.function !== undefined) {
                 if (hb.function === FUNC_SUM)
-                    hb.values = [FUNC_SUM];
+                    hb.values = ['Total'];
                 else
                     hb.values = ["Function(Unknown)"];
                 return "continue";
@@ -23186,9 +23186,6 @@ var gen_blank_facet_table = function (rawTable, header, info, depth, outerX, bia
                     }
                 }
                 if (rawTable[x + j][y + beforeBias] !== undefined && j === 0 && hb.blankLine && pos % hb.facet === 0) {
-                    // if(beforeBias > 0) rawTable[x+j][y].hasBlank = true
-                    // rawTable[x+j][y+beforeBias].hasBlank = true
-                    // if(afterBias > 0) rawTable[x+j][y+beforeBias+afterBias].hasBlank = true
                     if (beforeBias > 0) {
                         rawTable[x + j][y].hasBlank = true;
                         rawTable[x + j][y].blankLen = { len: len - y, y: y, maxLen: hbLen };
