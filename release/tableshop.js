@@ -23124,6 +23124,7 @@ var gen_blank_facet_table = function (rawTable, header, info, depth, outerX, bia
     if (header === undefined || header.length === 0)
         return [1, info.cellLength, 1, 0];
     var innerX = 0, maxLen = info.cellLength, facetSpan = 0, blankLine = 0;
+    var hbLen = { val: maxLen };
     var _d = info.layersBias[depth], beforeBias = _d[0], afterBias = _d[1];
     var keyLayer = beforeBias + afterBias;
     for (var _i = 0, header_2 = header; _i < header_2.length; _i++) {
@@ -23190,12 +23191,12 @@ var gen_blank_facet_table = function (rawTable, header, info, depth, outerX, bia
                     // if(afterBias > 0) rawTable[x+j][y+beforeBias+afterBias].hasBlank = true
                     if (beforeBias > 0) {
                         rawTable[x + j][y].hasBlank = true;
-                        rawTable[x + j][y].blankLen = len - y;
+                        rawTable[x + j][y].blankLen = { len: len - y, y: y, maxLen: hbLen };
                         delete rawTable[x + j][y + beforeBias].hasBlank;
                     }
                     else {
                         rawTable[x + j][y + beforeBias].hasBlank = true;
-                        rawTable[x + j][y + beforeBias].blankLen = len - y;
+                        rawTable[x + j][y + beforeBias].blankLen = { len: len - y, y: y, maxLen: hbLen };
                     }
                 }
             }
@@ -23228,7 +23229,7 @@ var gen_blank_facet_table = function (rawTable, header, info, depth, outerX, bia
             delete info.preVal[source];
             pos++;
             if (maxLen < len)
-                maxLen = len;
+                maxLen = len, hbLen.val = len;
             subFacetSpan += tmpFacetSpan;
         }
         if (hb.facet > 1)
@@ -23275,67 +23276,75 @@ var gen_final_table = function (table, tableClass) {
     }
     console.log('bf table', deepAssign({}, table));
     var finalTable = Array.from({ length: table.length }, function () { return new Array(); });
-    var locMap = new Array(maxLength).fill(0);
+    var visRecord = Array.from({ length: table.length }, function () { return new Array(); });
+    // let locMap = new Array(maxLength).fill(0)
     for (var i = 0; i < table.length; i++) {
-        var t = table[i];
         for (var j = 0; j < table[i].length; j++) {
+            var fixI = i;
+            while (visRecord[fixI][j]) {
+                fixI++;
+                if (visRecord[fixI] === undefined)
+                    visRecord[fixI] = new Array();
+            }
             if (table[i][j] === undefined) {
                 if (i + 1 >= table.length)
                     throw new Error("Final Table: Over Boundary");
-                // if(isBlank) {
-                //   if(finalTable[locMap[j]] === undefined) finalTable[locMap[j]] = new Array()
-                //   if(tableClass === ROW_TABLE) 
-                //     finalTable[locMap[j]].push({ rowSpan: 1, colSpan: table[i+1][j].colSpan})
-                //   else if(tableClass === COLUM_TABLE) 
-                //     finalTable[locMap[j]].push({ rowSpan: table[i+1][j].rowSpan, colSpan: 1})
-                //   locMap[j]++
-                // }
-                if (finalTable[locMap[j]] === undefined)
-                    finalTable[locMap[j]] = new Array();
+                if (finalTable[fixI] === undefined)
+                    finalTable[fixI] = new Array();
                 if (tableClass === ROW_TABLE)
-                    finalTable[locMap[j]].push({ rowSpan: 1, colSpan: table[i + 1][j].colSpan });
+                    // finalTable[fixI].push({ rowSpan: 1, colSpan: table[i+1][j].colSpan})
+                    finalTable[fixI].push({ rowSpan: 1, colSpan: spanList[j] });
                 else if (tableClass === COLUM_TABLE)
-                    finalTable[locMap[j]].push({ rowSpan: table[i + 1][j].rowSpan, colSpan: 1 });
-                locMap[j]++;
+                    // finalTable[fixI].push({ rowSpan: table[i+1][j].rowSpan, colSpan: 1})
+                    finalTable[fixI].push({ rowSpan: spanList[j], colSpan: 1 });
+                visRecord[fixI][j] = true;
             }
             else if (!table[i][j].isDelete) {
-                if (table[i][j].hasBlank) {
-                    var blankLen = table[i][j].blankLen;
+                var isBlank = table[i][j].hasBlank, blankLen = 0;
+                if (isBlank) {
+                    blankLen = table[i][j].blankLen.maxLen.val - table[i][j].blankLen.y;
                     delete table[i][j].hasBlank;
                     delete table[i][j].blankLen;
+                }
+                if (finalTable[fixI] === undefined)
+                    finalTable[fixI] = new Array();
+                finalTable[fixI].push(table[i][j]);
+                if (tableClass === ROW_TABLE) {
+                    for (var k = 0; k < table[i][j].rowSpan; k++) {
+                        if (visRecord[fixI + k] === undefined)
+                            visRecord[fixI + k] = new Array();
+                        visRecord[fixI + k][j] = true;
+                    }
+                    fixI += table[i][j].rowSpan;
+                }
+                else if (tableClass === COLUM_TABLE) {
+                    for (var k = 0; k < table[i][j].colSpan; k++) {
+                        if (visRecord[fixI + k] === undefined)
+                            visRecord[fixI + k] = new Array();
+                        visRecord[fixI + k][j] = true;
+                    }
+                    fixI += table[i][j].colSpan;
+                }
+                if (isBlank) {
+                    if (finalTable[fixI] === undefined)
+                        finalTable[fixI] = new Array();
+                    if (visRecord[fixI] === undefined)
+                        visRecord[fixI] = new Array();
                     if (tableClass === ROW_TABLE) {
                         for (var k = j; k < j + blankLen; k++) {
-                            if (finalTable[locMap[k]] === undefined)
-                                finalTable[locMap[k]] = new Array();
-                            finalTable[locMap[k]].push({ rowSpan: 1, colSpan: table[i][k].colSpan });
-                            locMap[k]++;
+                            // finalTable[locMap[k]].push({ rowSpan: 1, colSpan: table[i][k].colSpan})
+                            finalTable[fixI].push({ rowSpan: 1, colSpan: 1 });
+                            visRecord[fixI][k] = true;
                         }
                     }
                     else if (tableClass === COLUM_TABLE) {
                         for (var k = j; k < j + blankLen; k++) {
-                            if (finalTable[locMap[k]] === undefined)
-                                finalTable[locMap[k]] = new Array();
-                            finalTable[locMap[k]].push({ rowSpan: table[i][k].rowSpan, colSpan: 1 });
-                            locMap[k]++;
+                            // finalTable[locMap[k]].push({ rowSpan: table[i][k].rowSpan, colSpan: 1})
+                            finalTable[fixI].push({ rowSpan: 1, colSpan: 1 });
+                            visRecord[fixI][k] = true;
                         }
                     }
-                    // isBlank = true
                 }
-                // if(isBlank) {
-                //   if(finalTable[locMap[j]] === undefined) finalTable[locMap[j]] = new Array()
-                //   if(tableClass === ROW_TABLE) 
-                //     finalTable[locMap[j]].push({ rowSpan: 1, colSpan: table[i][j].colSpan})
-                //   else if(tableClass === COLUM_TABLE) 
-                //     finalTable[locMap[j]].push({ rowSpan: table[i][j].rowSpan, colSpan: 1})
-                //   locMap[j]++
-                // }
-                if (finalTable[locMap[j]] === undefined)
-                    finalTable[locMap[j]] = new Array();
-                finalTable[locMap[j]].push(table[i][j]);
-                if (tableClass === ROW_TABLE)
-                    locMap[j] += table[i][j].rowSpan;
-                else if (tableClass === COLUM_TABLE)
-                    locMap[j] += table[i][j].colSpan;
             }
         }
     }
@@ -23362,8 +23371,8 @@ var gen_grid_merged_table = function (table, idDict) {
         var t = _a[_i];
         rowLen += t.colSpan;
     }
-    var vvTable = Array.from({ length: table.length }, function () { return new Array(rowLen)
-        .fill(null).map(function (_) { return ({ rowSpan: 1, colSpan: 1 }); }); });
+    var vvTable = Array.from({ length: table.length }, function (_, idx1) { return new Array(rowLen).fill(null)
+        .map(function (_, idx2) { return ({ rowSpan: 1, colSpan: 1, loc: { x: idx1, y: idx2 }, isSkip: false }); }); });
     var useRecord = Array.from({ length: table.length }, function () { return new Array(rowLen).fill(false); });
     for (var i = 0; i < table.length; i++) {
         for (var j = 0; j < table[i].length; j++) {
