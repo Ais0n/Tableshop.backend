@@ -817,10 +817,7 @@ const gen_blank_facet_table = (rawTable, header, info, depth, outerX,
             if(nowAfterBias > 0) rawTable[x+j][y+beforeBias+afterBias].colSpan = tmpFacetSpan + blank
           }          
         }
-        if(rawTable[x+j][y+beforeBias] !== undefined && j===0 && hb.blankLine) {
-          // if(beforeBias > 0) rawTable[x+j][y].hasBlank = true
-          // rawTable[x+j][y+beforeBias].hasBlank = true
-          // if(afterBias > 0) rawTable[x+j][y+beforeBias+afterBias].hasBlank = true
+        if(rawTable[x+j][y+beforeBias] !== undefined && j===0 && hb.blankLine && pos%hb.facet===0) {
           if(beforeBias > 0) {
             rawTable[x+j][y].hasBlank = true
             rawTable[x+j][y].blankLen = {len: len - y, y, maxLen: hbLen}
@@ -887,6 +884,7 @@ const gen_final_table = (table, tableClass) => {
       h++
     }
   }
+  for(let i=0; i<spanList.length; i++) if(spanList[i]===undefined) spanList[i] = 1
   // fill each length
   for(let t of table) {
     let resLen = maxLength - t.length, tmp = t.length 

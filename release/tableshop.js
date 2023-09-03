@@ -23185,7 +23185,7 @@ var gen_blank_facet_table = function (rawTable, header, info, depth, outerX, bia
                             rawTable[x + j][y + beforeBias + afterBias].colSpan = tmpFacetSpan + blank;
                     }
                 }
-                if (rawTable[x + j][y + beforeBias] !== undefined && j === 0 && hb.blankLine) {
+                if (rawTable[x + j][y + beforeBias] !== undefined && j === 0 && hb.blankLine && pos % hb.facet === 0) {
                     // if(beforeBias > 0) rawTable[x+j][y].hasBlank = true
                     // rawTable[x+j][y+beforeBias].hasBlank = true
                     // if(afterBias > 0) rawTable[x+j][y+beforeBias+afterBias].hasBlank = true
@@ -23263,6 +23263,9 @@ var gen_final_table = function (table, tableClass) {
             h++;
         }
     }
+    for (var i = 0; i < spanList.length; i++)
+        if (spanList[i] === undefined)
+            spanList[i] = 1;
     // fill each length
     for (var _i = 0, table_1 = table; _i < table_1.length; _i++) {
         var t = table_1[_i];
