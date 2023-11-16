@@ -473,10 +473,10 @@ let spec5 = {
   "rowHeader": [
       {
           "attrName": "continent",
-          "blockId": "c05d5561-f28f-40dd-9710-c0b7971474e6",
+          "blockId": "81de1d08-dd6d-4857-b45c-fefd4c4083d9",
           "channel": "row",
-          "entityMerge": true,
-          "gridMerge": "merged",
+          "entityMerge": false,
+          "gridMerge": "unmerged-all",
           "facet": 1,
           "facetMerge": true,
           "facetEnd": false,
@@ -490,7 +490,7 @@ let spec5 = {
           "children": [
               {
                   "attrName": "country",
-                  "blockId": "a8c1aa3b-1efd-4d16-be44-fddd3a67ff69",
+                  "blockId": "41859e92-a85e-4de2-b63c-53dade71cfb3",
                   "entityMerge": false,
                   "channel": "row",
                   "gridMerge": "merged",
@@ -506,105 +506,13 @@ let spec5 = {
                       "FRA",
                       "USA",
                       "CAN"
-                  ],
-                  "unfolded": false,
-                  "key": {
-                      "position": "left",
-                      "pattern": "1",
-                      "isInherited": true
-                  }
-              }
-          ],
-          "key": {
-              "position": "left",
-              "pattern": "A",
-              "isInherited": true
-          }
-      }
-  ],
-  "columnHeader": [
-      {
-          "attrName": "year",
-          "blockId": "59d3db0e-29b5-443c-9b9d-300862e6680f",
-          "children": [
-              {
-                  "attrName": "season",
-                  "blockId": "beb8d4ba-1acb-46dc-a156-2f9e2a1514b1",
-                  "children": [],
-                  "channel": "column",
-                  "entityMerge": false,
-                  "gridMerge": "merged",
-                  "facet": 1,
-                  "facetMerge": true,
-                  "facetEnd": false,
-                  "blankLine": false,
-                  "style": {},
-                  "values": [
-                      "spr",
-                      "aut"
                   ]
               }
-          ],
-          "channel": "column",
-          "entityMerge": false,
-          "gridMerge": "merged",
-          "facet": 1,
-          "facetMerge": true,
-          "facetEnd": false,
-          "blankLine": false,
-          "style": {},
-          "values": [
-              "2019",
-              "2020",
-              "2021"
           ]
       }
   ],
-  "cell": [
-      {
-          "attrName": "sales",
-          "blockId": "8ddde707-25aa-47c6-9283-18e9565f581e",
-          "channel": "cell",
-          "rowParentId": "a8c1aa3b-1efd-4d16-be44-fddd3a67ff69",
-          "colParentId": "beb8d4ba-1acb-46dc-a156-2f9e2a1514b1",
-          "style": {}
-      },
-      {
-          "attrName": "sales",
-          "blockId": "af5171dc-a2df-48a3-a49c-e386d22e04f4",
-          "rowParentId": "c05d5561-f28f-40dd-9710-c0b7971474e6",
-          "channel": "cell",
-          "style": {}
-      },
-      {
-          "attrName": "sales",
-          "blockId": "0cc56d68-8c5f-4878-9bda-04fa1e111d06",
-          "colParentId": "beb8d4ba-1acb-46dc-a156-2f9e2a1514b1",
-          "channel": "cell",
-          "style": {}
-      },
-      {
-          "attrName": "sales",
-          "blockId": "52a35c6e-c2c8-410c-89dd-5ad38133ef35",
-          "colParentId": "beb8d4ba-1acb-46dc-a156-2f9e2a1514b1",
-          "channel": "cell",
-          "style": {}
-      },
-      {
-          "attrName": "sales",
-          "blockId": "820966e6-c665-4dc2-97ca-28bcb4d16b86",
-          "colParentId": "beb8d4ba-1acb-46dc-a156-2f9e2a1514b1",
-          "channel": "cell",
-          "style": {}
-      },
-      {
-          "attrName": "sales",
-          "blockId": "7a932477-5ef1-4715-89c8-1b3e291f4703",
-          "colParentId": "beb8d4ba-1acb-46dc-a156-2f9e2a1514b1",
-          "channel": "cell",
-          "style": {}
-      }
-  ],
+  "columnHeader": [],
+  "cell": [],
   "attrInfo": [
       {
           "name": "continent",
@@ -613,7 +521,27 @@ let spec5 = {
               "Europe",
               "America"
           ],
-          "dataType": "categorical"
+          "dataType": "categorical",
+          "fullValues": [
+              "Asia",
+              "Asia",
+              "Asia",
+              "Asia",
+              "Asia",
+              "Asia",
+              "Europe",
+              "Europe",
+              "Europe",
+              "Europe",
+              "Europe",
+              "Europe",
+              "America",
+              "America",
+              "America",
+              "America",
+              "America",
+              "America"
+          ]
       },
       {
           "name": "country",
@@ -625,7 +553,27 @@ let spec5 = {
               "USA",
               "CAN"
           ],
-          "dataType": "categorical"
+          "dataType": "categorical",
+          "fullValues": [
+              "CHN",
+              "CHN",
+              "CHN",
+              "JPN",
+              "JPN",
+              "JPN",
+              "GBR",
+              "GBR",
+              "GBR",
+              "FRA",
+              "FRA",
+              "FRA",
+              "USA",
+              "USA",
+              "USA",
+              "CAN",
+              "CAN",
+              "CAN"
+          ]
       },
       {
           "name": "year",
@@ -634,52 +582,75 @@ let spec5 = {
               "2020",
               "2021"
           ],
-          "dataType": "categorical"
-      },
-      {
-          "name": "season",
-          "values": [
-              "spr",
-              "aut"
-          ],
-          "dataType": "categorical"
+          "dataType": "categorical",
+          "fullValues": [
+              "2019",
+              "2020",
+              "2021",
+              "2019",
+              "2020",
+              "2021",
+              "2019",
+              "2020",
+              "2021",
+              "2019",
+              "2020",
+              "2021",
+              "2019",
+              "2020",
+              "2021",
+              "2019",
+              "2020",
+              "2021"
+          ]
       },
       {
           "name": "sales",
           "values": [
-              105,
-              110,
-              120,
-              125,
-              131,
-              150,
-              60,
-              80,
-              82,
-              92,
-              95,
-              104,
-              112,
-              136,
-              59,
-              63,
-              72,
-              79,
-              86,
-              90,
-              101,
-              130,
-              134,
+              215,
+              245,
+              281,
               140,
-              146,
-              85,
-              88
+              174,
+              205,
+              172,
+              199,
+              248,
+              122,
+              151,
+              176,
+              226,
+              264,
+              286,
+              159,
+              167,
+              178
           ],
-          "dataType": "numerical"
+          "dataType": "numerical",
+          "fullValues": [
+              215,
+              245,
+              281,
+              140,
+              174,
+              205,
+              172,
+              199,
+              248,
+              122,
+              151,
+              176,
+              226,
+              264,
+              286,
+              159,
+              167,
+              178
+          ]
       }
   ],
-  "left": 456,
-  "top": 348,
+  "left": 285,
+  "top": 331,
   "styles": {}
 }
 

@@ -23478,7 +23478,7 @@ var gen_facet_ME_table = function (table, tbClass, idDict) {
                 var bias = tmp.rowSpan;
                 if (!tmp.skip && id) {
                     var rInfo = idDict.rowDict[id];
-                    if (rInfo && rInfo.facetMerge) {
+                    if (rInfo && rInfo.facetMerge && rInfo.gridMerge != GridMerge.UnmergedAll) {
                         while (i + bias < formatTable.length && value === formatTable[i + bias][j].value &&
                             id === formatTable[i + bias][j].sourceBlockId) {
                             tmp.rowSpan += formatTable[i + bias][j].rowSpan;
@@ -23502,7 +23502,7 @@ var gen_facet_ME_table = function (table, tbClass, idDict) {
                 var bias = tmp.colSpan;
                 if (!tmp.skip && id) {
                     var cInfo = idDict.colDict[id];
-                    if (cInfo && cInfo.facetMerge) {
+                    if (cInfo && cInfo.facetMerge && cInfo.gridMerge != GridMerge.UnmergedAll) {
                         while (j + bias < formatTable[i].length && value === formatTable[i][j + bias].value &&
                             id === formatTable[i][j + bias].sourceBlockId) {
                             tmp.colSpan += formatTable[i][j + bias].colSpan;
