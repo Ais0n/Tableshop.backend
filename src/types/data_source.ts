@@ -13,9 +13,10 @@ type JSONArray = object[];
 
 // Source Table
 export interface SourceTable {
-  name: string;
-  format?: SourceTableFormat;
-  values?: CSVArray | JSONArray;
+  // name: string;
+  // format?: SourceTableFormat;
+  // values?: CSVArray | JSONArray;
+  metaData?: CSVArray | JSONArray;
 }
 
 // Specification
@@ -43,15 +44,15 @@ export enum Position {
 }
 
 export enum Pattern {
-  ROMAN = "I",
-  NUMERICAL = "1",
-  ALPHABETIC = "A"
+  ROMAN = "roman-numeral",
+  NUMERICAL = "number",
+  ALPHABETIC = "letter"
 }
 
 export enum GridMerge {
   Merged = "merged",
-  UnmergedFirst = "unmerged-first",
-  UnmergedAll = "unmerged-all"
+  UnmergedFirst = "first-value",
+  UnmergedAll = "all-values"
 }
 
 export enum BorderPosition {
@@ -85,7 +86,8 @@ type Color = string
 export interface Key {
   position: Position;
   pattern: Pattern;
-  isInherited: boolean;
+  // isInherited: boolean;
+  nesting: boolean;
 }
 
 export interface Border {
@@ -100,37 +102,67 @@ export interface Background {
 }
 
 export interface Font {
-  size: number;
-  weight: FontWeight;
-  color: Color;
+  fontSize: number;
+  fontWeight: FontWeight;
+  fontColor: Color;
   underscore?: FontUnderscore;
 }
 
-export interface HeaderBlock {
-  attrName: string | undefined; // link to AttrInfoUnit name
-  function: string | undefined; // can not exist with attrName
-  blockId: string;
+export interface Hierarchy {
+  groupBy?: boolean;
+  cellMerge?: GridMerge;
+}
+
+export interface Facet {
+  division?: number;
+  facetMerge?: boolean;
+  facetEnd?: boolean;
+}
+
+export interface Marginalia {
+  spacing?: boolean;
+  key?: Key;
+}
+
+export interface Structure {
+  hierarchy?: Hierarchy;
+  facet?: Facet;
+  marginalia?: Marginalia;
+}
+
+export interface PuzzleStyle {
   className?: string;
+  style?: StyleClass;
+}
+
+export interface HeaderBlock {
+  entityName: string | undefined; // link to AttrInfoUnit name
+  function: string | undefined; // can not exist with entityName
+  puzzleId: string;
+  className?: string;
+  structure?: Structure;
+  puzzleStyle?: PuzzleStyle;
   key?: Key;
   entityMerge?: boolean;
   gridMerge?: GridMerge;
   // expand?: boolean;
-  facet?: number;
-  facetMerge?: boolean,
-  facetEnd?: boolean,
-  title?: string,
+  division?: number;
+  facetMerge?: boolean;
+  facetEnd?: boolean;
   blankLine?: boolean;
+  title?: string;
   style?: StyleClass;
   values?: string[] | number[];
   children?: HeaderBlock[];
 }
 
 export interface CellBlock {
-  attrName: string;
-  blockId: string;
+  entityName: string;
+  puzzleId: string;
   rowParentId?: string;
   colParentId?: string;
   className?: string;
+  puzzleStyle?: PuzzleStyle;
   style?: StyleClass; 
 }
 
@@ -139,7 +171,8 @@ export type CellChannel = CellBlock[]
 
 export interface StyleClass {
   border?: Border;
-  background?: Background;
+  // background?: Background;
+  backgroundColor?: Color;
   indent?: number;
   font?: Font;
 }
@@ -148,7 +181,7 @@ export interface SingleTable {
   rowHeader?: HeaderChannel;
   columnHeader?: HeaderChannel;
   cell: CellChannel;
-  styles: {
+  globalStyle: {
     [key: string]: StyleClass
   };
   attrInfo: AttrInfo; 

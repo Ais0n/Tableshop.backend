@@ -1,5 +1,5 @@
 import {
-  SourceTable, SingleTable,  
+  SourceTable, SingleTable,
   AttrInfoUnit, AttrInfo, DataType,
   Key, KEY_ALPHABETIC, KEY_ROMAN, KEY_NUMERICAL, Pattern, Position,
   GridMerge,
@@ -10,10 +10,12 @@ import {
 import { CROSS_TABLE, ROW_TABLE, COLUM_TABLE, interCell, BlockType } from "./data_intermediate";
 import { SelectorType } from "./style_selector";
 
-interface Spec {
-  data: SourceTable;
-  spec: SingleTable;
-}
+// interface Spec {
+//   data: SourceTable;
+//   spec: SingleTable;
+// }
+
+type Spec = SourceTable & SingleTable;
 
 export {
   Spec, SourceTable, SingleTable,

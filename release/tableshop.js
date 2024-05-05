@@ -24,6 +24,18 @@ var __assign = function() {
     return __assign.apply(this, arguments);
 };
 
+function __rest(s, e) {
+    var t = {};
+    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
+        t[p] = s[p];
+    if (s != null && typeof Object.getOwnPropertySymbols === "function")
+        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
+            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
+                t[p[i]] = s[p[i]];
+        }
+    return t;
+}
+
 function __awaiter(thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -91,15 +103,15 @@ var Position;
 })(Position || (Position = {}));
 var Pattern;
 (function (Pattern) {
-    Pattern["ROMAN"] = "I";
-    Pattern["NUMERICAL"] = "1";
-    Pattern["ALPHABETIC"] = "A";
+    Pattern["ROMAN"] = "roman-numeral";
+    Pattern["NUMERICAL"] = "number";
+    Pattern["ALPHABETIC"] = "letter";
 })(Pattern || (Pattern = {}));
 var GridMerge;
 (function (GridMerge) {
     GridMerge["Merged"] = "merged";
-    GridMerge["UnmergedFirst"] = "unmerged-first";
-    GridMerge["UnmergedAll"] = "unmerged-all";
+    GridMerge["UnmergedFirst"] = "first-value";
+    GridMerge["UnmergedAll"] = "all-values";
 })(GridMerge || (GridMerge = {}));
 var BorderPosition;
 (function (BorderPosition) {
@@ -22407,16 +22419,37 @@ var header_fill = function (attrInfo, styles, header) {
     var _a, _b, _c, _d, _e, _f, _g;
     if (header !== undefined) {
         var _loop_1 = function (hb) {
+            if (hb.structure && Object.keys(hb.structure).length !== 0) {
+                var st = hb.structure;
+                if (st.hierarchy) {
+                    hb.entityMerge = st.hierarchy.groupBy;
+                    hb.gridMerge = st.hierarchy.cellMerge;
+                }
+                if (st.facet) {
+                    hb.division = st.facet.division;
+                    hb.facetMerge = st.facet.facetMerge;
+                    hb.facetEnd = st.facet.facetEnd;
+                }
+                if (st.marginalia) {
+                    hb.blankLine = st.marginalia.spacing;
+                    hb.key = st.marginalia.key;
+                }
+            }
             hb.entityMerge = (_a = hb.entityMerge) !== null && _a !== void 0 ? _a : false;
             hb.gridMerge = (_b = hb.gridMerge) !== null && _b !== void 0 ? _b : GridMerge.Merged;
-            hb.facet = (_c = hb.facet) !== null && _c !== void 0 ? _c : 1;
+            hb.division = (_c = hb.division) !== null && _c !== void 0 ? _c : 1;
             hb.facetMerge = (_d = hb.facetMerge) !== null && _d !== void 0 ? _d : true;
             hb.facetEnd = (_e = hb.facetEnd) !== null && _e !== void 0 ? _e : false;
             hb.blankLine = (_f = hb.blankLine) !== null && _f !== void 0 ? _f : false;
-            if (hb.title === "")
-                hb.title = hb.attrName;
             if (hb.key && Object.keys(hb.key).length === 0)
                 hb.key = undefined;
+            if (hb.title === "")
+                hb.title = hb.entityName;
+            if (hb.puzzleStyle && Object.keys(hb.puzzleStyle).length !== 0) {
+                var ps = hb.puzzleStyle;
+                if (ps.style && Object.keys(ps.style).length !== 0)
+                    hb.style = ps.style;
+            }
             var headerStyle = hb.className ? deepAssign({}, styles[hb.className]) : {};
             if (!hb.style || Object.keys(hb.style).length === 0)
                 hb.style = {};
@@ -22429,7 +22462,7 @@ var header_fill = function (attrInfo, styles, header) {
                 return "continue";
             }
             var attr = attrInfo.find(function (obj) {
-                return obj.name === hb.attrName;
+                return obj.name === hb.entityName;
             });
             if (attr !== undefined)
                 hb.values = (_g = hb.values) !== null && _g !== void 0 ? _g : attr.values;
@@ -22444,28 +22477,35 @@ var header_fill = function (attrInfo, styles, header) {
 };
 // init spec default value
 var spec_init = function (task) {
-    task.data; var spec = task.spec;
+    task.metaData; var spec = __rest(task, ["metaData"]);
     if (spec.rowHeader === undefined)
         spec.rowHeader = new Array();
     if (spec.columnHeader === undefined)
         spec.columnHeader = new Array();
     if (spec.cell === undefined)
         spec.cell = new Array();
-    var rowHeader = spec.rowHeader, columnHeader = spec.columnHeader, cell = spec.cell, styles = spec.styles, attrInfo = spec.attrInfo;
+    var rowHeader = spec.rowHeader, columnHeader = spec.columnHeader, cell = spec.cell, styles = spec.globalStyle, attrInfo = spec.attrInfo;
     // make sure the header can not be both undefined
     if ((rowHeader === undefined || rowHeader.length === 0) &&
         (columnHeader === undefined || columnHeader.length === 0)) {
         throw new Error("RowHeader and ColumnHeader can not be both undefined!");
     }
     else {
-        if (!styles || Object.keys(styles).length === 0)
-            spec.styles = {};
+        if (!styles || Object.keys(styles).length === 0) {
+            spec.globalStyle = {};
+            styles = {};
+        }
         for (var _i = 0, _a = [rowHeader, columnHeader]; _i < _a.length; _i++) {
             var header = _a[_i];
             header_fill(attrInfo, styles, header);
         }
         for (var _b = 0, cell_1 = cell; _b < cell_1.length; _b++) {
             var c = cell_1[_b];
+            if (c.puzzleStyle && Object.keys(c.puzzleStyle).length !== 0) {
+                var ps = c.puzzleStyle;
+                if (ps.style && Object.keys(ps.style).length !== 0)
+                    c.style = ps.style;
+            }
             var cellStyle = c.className ? deepAssign({}, styles[c.className]) : {};
             if (!c.style || Object.keys(c.style).length === 0)
                 c.style = {};
@@ -22476,7 +22516,7 @@ var spec_init = function (task) {
 // process style to css format
 var style_process = function (style) {
     var output = {};
-    var border = style.border, font = style.font, background = style.background, indent = style.indent;
+    var border = style.border, font = style.font, backgroundColor = style.backgroundColor, indent = style.indent;
     // Border
     if (border) {
         var positionKey = "", bdFormat = new Array();
@@ -22511,16 +22551,16 @@ var style_process = function (style) {
     }
     // Font
     if (font) {
-        if (font.color)
-            output['color'] = font.color;
-        if (font.size)
-            output['font-size'] = font.size + "px";
-        if (font.weight) {
-            if (font.weight === FontWeight.REGULAR)
+        if (font.fontColor)
+            output['color'] = font.fontColor;
+        if (font.fontSize)
+            output['font-size'] = font.fontSize + "px";
+        if (font.fontWeight) {
+            if (font.fontWeight === FontWeight.REGULAR)
                 output['font-family'] = "Inter-Regular-9";
-            else if (font.weight === FontWeight.BOLD)
+            else if (font.fontWeight === FontWeight.BOLD)
                 output['font-family'] = "Inter-Bold-4";
-            else if (font.weight === FontWeight.SEMIBOLD)
+            else if (font.fontWeight === FontWeight.SEMIBOLD)
                 output['font-family'] = "Inter-Medium-8";
         }
         if (font.underscore === FontUnderscore.Single)
@@ -22529,10 +22569,11 @@ var style_process = function (style) {
             output['text-decoration'] = "underline double";
     }
     // Background
-    if (background) {
-        if (background.color)
-            output['background-color'] = background.color;
-    }
+    // if(background) {
+    //   if(background.color) output['background-color'] = background.color
+    // }
+    if (backgroundColor)
+        output['background-color'] = backgroundColor;
     // Indent
     if (indent)
         output['padding-left'] = indent + "px";
@@ -22564,8 +22605,8 @@ var calc_head_size2 = function (channel, data, preVal) {
         var hb = channel_3[_i];
         for (var _a = 0, _b = hb.values; _a < _b.length; _a++) {
             var v = _b[_a];
-            if (hb.attrName)
-                preVal[hb.attrName] = v;
+            if (hb.entityName)
+                preVal[hb.entityName] = v;
             var isValid = get_cell_head_is_valid(preVal, data);
             if (isValid) {
                 if (hb.entityMerge)
@@ -22576,8 +22617,8 @@ var calc_head_size2 = function (channel, data, preVal) {
                 }
             }
             // console.log('calc_size', preVal, size); 
-            if (hb.attrName)
-                delete preVal[hb.attrName];
+            if (hb.entityName)
+                delete preVal[hb.entityName];
         }
     }
     return size;
@@ -22648,7 +22689,7 @@ var get_header_is_facet = function (channel) {
         return false;
     for (var _i = 0, channel_10 = channel; _i < channel_10.length; _i++) {
         var hb = channel_10[_i];
-        if (hb.facet > 1)
+        if (hb.division > 1)
             return true;
         var res = get_header_is_facet(hb.children);
         if (res)
@@ -22667,8 +22708,8 @@ var get_header_id_dict = function (channel, title, depth, preFEnd) {
         var hb = channel_11[_i];
         var facetEnd = preFEnd ? true : hb.facetEnd;
         var info = get_header_id_dict(hb.children, title, depth + 1, facetEnd);
-        info[hb.blockId] = {
-            attrName: hb.attrName,
+        info[hb.puzzleId] = {
+            entityName: hb.entityName,
             function: hb.function,
             values: hb.values,
             hasBlank: hb.blankLine,
@@ -22694,7 +22735,7 @@ var get_cell_id_dict = function (channel) {
     var res = {};
     for (var _i = 0, channel_12 = channel; _i < channel_12.length; _i++) {
         var c = channel_12[_i];
-        res[c.blockId] = {
+        res[c.puzzleId] = {
             rowPId: c.rowParentId,
             colPId: c.colParentId,
         };
@@ -22749,7 +22790,7 @@ var get_key = function (key, level, preKey) {
     else if (key.pattern === Pattern.ALPHABETIC) {
         nowKey = KEY_ALPHABETIC[level];
     }
-    return (key.isInherited && preKey !== '') ? [preKey, nowKey].join('.') : nowKey;
+    return (key.nesting && preKey !== '') ? [preKey, nowKey].join('.') : nowKey;
 };
 // Aggregate Function
 // TODO: add more function
@@ -22786,9 +22827,9 @@ var aggregate_sum = function (preVal, data, key, valDict) {
     return ans;
 };
 // check cell type which used for agg function
-var agg_type_check = function (attrInfo, attrName) {
+var agg_type_check = function (attrInfo, entityName) {
     var attr = attrInfo.find(function (obj) {
-        return obj.name == attrName;
+        return obj.name == entityName;
     });
     if (attr && attr.dataType === DataType.NUMERICAL)
         return true;
@@ -22811,7 +22852,7 @@ var gen_inter_row_table = function (interRowTable, rowHeader, extra, width, dept
     for (var _i = 0, rowHeader_1 = rowHeader; _i < rowHeader_1.length; _i++) {
         var rh = rowHeader_1[_i];
         var isLeaf = (rh.children && rh.children.length) ? false : true;
-        var sourceBlockId = rh.blockId, source = (_a = rh.attrName) !== null && _a !== void 0 ? _a : rh.function;
+        var sourcePuzzleId = rh.puzzleId, source = (_a = rh.entityName) !== null && _a !== void 0 ? _a : rh.function;
         var headerDepth = depth + keyBias + leftBias, keyDepth = headerDepth;
         // let headerStyle = style_process(rh.style)
         var headerStyle = rh.style;
@@ -22831,7 +22872,7 @@ var gen_inter_row_table = function (interRowTable, rowHeader, extra, width, dept
             var keyData = {
                 value: key,
                 source: '@__KEY',
-                sourceBlockId: sourceBlockId,
+                sourcePuzzleId: sourcePuzzleId,
                 rowSpan: 1, colSpan: 1,
                 isUsed: false,
                 isLeaf: isLeaf,
@@ -22841,7 +22882,7 @@ var gen_inter_row_table = function (interRowTable, rowHeader, extra, width, dept
             };
             if (source)
                 extra.preVal[source] = rh.values[i];
-            if (!get_cell_head_is_valid(extra.preVal, extra.data) && rh.attrName) {
+            if (!get_cell_head_is_valid(extra.preVal, extra.data) && rh.entityName) {
                 delete extra.preVal[source];
                 continue;
             }
@@ -22861,7 +22902,7 @@ var gen_inter_row_table = function (interRowTable, rowHeader, extra, width, dept
                 interRowTable[innerX + outerX + bias][headerDepth] = {
                     value: headValue,
                     source: source,
-                    sourceBlockId: sourceBlockId,
+                    sourcePuzzleId: sourcePuzzleId,
                     rowSpan: 1, colSpan: span,
                     isUsed: false,
                     isLeaf: isLeaf,
@@ -22879,7 +22920,7 @@ var gen_inter_row_table = function (interRowTable, rowHeader, extra, width, dept
                     interRowTable[innerX + outerX + j + bias][headerDepth] = {
                         value: headValue,
                         source: source,
-                        sourceBlockId: sourceBlockId,
+                        sourcePuzzleId: sourcePuzzleId,
                         rowSpan: rs, colSpan: span,
                         isUsed: false,
                         isLeaf: isLeaf,
@@ -22893,18 +22934,18 @@ var gen_inter_row_table = function (interRowTable, rowHeader, extra, width, dept
             if (!extra.notSearchCell && isLeaf) {
                 for (var _c = 0, _d = extra.cell; _c < _d.length; _c++) {
                     var c = _d[_c];
-                    if (c.rowParentId === rh.blockId) {
+                    if (c.rowParentId === rh.puzzleId) {
                         // let cellStyle = style_process(c.style)
                         var cellStyle = c.style;
                         // process function cell
                         if (rh.function) {
-                            if (!agg_type_check(extra.attrInfo, c.attrName))
+                            if (!agg_type_check(extra.attrInfo, c.entityName))
                                 throw new Error("Function can only be used to numerical>");
                             delete extra.preVal[source];
                             extra.cellTable[innerX + outerX + bias].push({
-                                value: aggregate_use(extra.preVal, extra.data, c.attrName, extra.valDict, FUNC_SUM),
-                                source: c.attrName,
-                                sourceBlockId: c.blockId,
+                                value: aggregate_use(extra.preVal, extra.data, c.entityName, extra.valDict, FUNC_SUM),
+                                source: c.entityName,
+                                sourcePuzzleId: c.puzzleId,
                                 type: BlockType.CELL,
                                 style: cellStyle
                             });
@@ -22912,9 +22953,9 @@ var gen_inter_row_table = function (interRowTable, rowHeader, extra, width, dept
                         }
                         else {
                             extra.cellTable[innerX + outerX + bias].push({
-                                value: get_cell_val(extra.preVal, extra.data, c.attrName),
-                                source: c.attrName,
-                                sourceBlockId: c.blockId,
+                                value: get_cell_val(extra.preVal, extra.data, c.entityName),
+                                source: c.entityName,
+                                sourcePuzzleId: c.puzzleId,
                                 type: BlockType.CELL,
                                 style: cellStyle
                             });
@@ -22928,7 +22969,7 @@ var gen_inter_row_table = function (interRowTable, rowHeader, extra, width, dept
                 extra.valIdx.push({
                     idx: innerX + outerX + bias,
                     preVal: Object.assign({}, extra.preVal),
-                    blockId: rh.blockId,
+                    puzzleId: rh.puzzleId,
                     isAgg: rh.function ? true : false
                 });
             }
@@ -22956,7 +22997,7 @@ var gen_inter_column_table = function (interColumnTable, columnHeader, extra, wi
     for (var _i = 0, columnHeader_1 = columnHeader; _i < columnHeader_1.length; _i++) {
         var ch = columnHeader_1[_i];
         var isLeaf = (ch.children && ch.children.length) ? false : true;
-        var sourceBlockId = ch.blockId, source = (_a = ch.attrName) !== null && _a !== void 0 ? _a : ch.function;
+        var sourcePuzzleId = ch.puzzleId, source = (_a = ch.entityName) !== null && _a !== void 0 ? _a : ch.function;
         var headerDepth = depth + keyBias + topBias, keyDepth = headerDepth;
         // let headerStyle = style_process(ch.style)
         var headerStyle = ch.style;
@@ -22976,7 +23017,7 @@ var gen_inter_column_table = function (interColumnTable, columnHeader, extra, wi
             var keyData = {
                 value: key,
                 source: '@__KEY',
-                sourceBlockId: sourceBlockId,
+                sourcePuzzleId: sourcePuzzleId,
                 rowSpan: 1, colSpan: 1,
                 isUsed: false,
                 isLeaf: isLeaf,
@@ -22986,7 +23027,7 @@ var gen_inter_column_table = function (interColumnTable, columnHeader, extra, wi
             };
             if (source)
                 extra.preVal[source] = ch.values[i];
-            if (!get_cell_head_is_valid(extra.preVal, extra.data) && ch.attrName) {
+            if (!get_cell_head_is_valid(extra.preVal, extra.data) && ch.entityName) {
                 delete extra.preVal[source];
                 continue;
             }
@@ -23006,7 +23047,7 @@ var gen_inter_column_table = function (interColumnTable, columnHeader, extra, wi
                 interColumnTable[headerDepth][innerY + outerY + bias] = {
                     value: headValue,
                     source: source,
-                    sourceBlockId: sourceBlockId,
+                    sourcePuzzleId: sourcePuzzleId,
                     rowSpan: span, colSpan: 1,
                     isUsed: false,
                     isLeaf: isLeaf,
@@ -23024,7 +23065,7 @@ var gen_inter_column_table = function (interColumnTable, columnHeader, extra, wi
                     interColumnTable[headerDepth][innerY + outerY + j + bias] = {
                         value: headValue,
                         source: source,
-                        sourceBlockId: sourceBlockId,
+                        sourcePuzzleId: sourcePuzzleId,
                         rowSpan: span, colSpan: cs,
                         isUsed: false,
                         isLeaf: isLeaf,
@@ -23038,18 +23079,18 @@ var gen_inter_column_table = function (interColumnTable, columnHeader, extra, wi
             if (!extra.notSearchCell && isLeaf) {
                 for (var _c = 0, _d = extra.cell; _c < _d.length; _c++) {
                     var c = _d[_c];
-                    if (c.colParentId === ch.blockId) {
+                    if (c.colParentId === ch.puzzleId) {
                         // let cellStyle = style_process(c.style)
                         var cellStyle = c.style;
                         // process function cell
                         if (ch.function) {
-                            if (!agg_type_check(extra.attrInfo, c.attrName))
+                            if (!agg_type_check(extra.attrInfo, c.entityName))
                                 throw new Error("Function can only be used to numerical>");
                             delete extra.preVal[source];
                             extra.cellTable[innerY + outerY + bias].push({
-                                value: aggregate_use(extra.preVal, extra.data, c.attrName, extra.valDict, FUNC_SUM),
-                                source: c.attrName,
-                                sourceBlockId: c.blockId,
+                                value: aggregate_use(extra.preVal, extra.data, c.entityName, extra.valDict, FUNC_SUM),
+                                source: c.entityName,
+                                sourcePuzzleId: c.puzzleId,
                                 type: BlockType.CELL,
                                 style: cellStyle
                             });
@@ -23057,9 +23098,9 @@ var gen_inter_column_table = function (interColumnTable, columnHeader, extra, wi
                         }
                         else {
                             extra.cellTable[innerY + outerY + bias].push({
-                                value: get_cell_val(extra.preVal, extra.data, c.attrName),
-                                source: c.attrName,
-                                sourceBlockId: c.blockId,
+                                value: get_cell_val(extra.preVal, extra.data, c.entityName),
+                                source: c.entityName,
+                                sourcePuzzleId: c.puzzleId,
                                 type: BlockType.CELL,
                                 style: cellStyle
                             });
@@ -23073,7 +23114,7 @@ var gen_inter_column_table = function (interColumnTable, columnHeader, extra, wi
                 extra.valIdx.push({
                     idx: innerY + outerY + bias,
                     preVal: Object.assign({}, extra.preVal),
-                    blockId: ch.blockId,
+                    puzzleId: ch.puzzleId,
                     isAgg: ch.function ? true : false
                 });
             }
@@ -23091,17 +23132,17 @@ var gen_inter_cross_table = function (interCrossTable, rowExtra, colExtra, cell,
         for (var j = 0; j < colValIdx.length; j++) {
             for (var _i = 0, cell_2 = cell; _i < cell_2.length; _i++) {
                 var c = cell_2[_i];
-                if (c.rowParentId === rowValIdx[i].blockId && c.colParentId === colValIdx[j].blockId) {
+                if (c.rowParentId === rowValIdx[i].puzzleId && c.colParentId === colValIdx[j].puzzleId) {
                     // let cellStyle = style_process(c.style)
                     var cellStyle = c.style;
                     var x = rowValIdx[i].idx, y = colValIdx[j].idx;
                     if (rowValIdx[i].isAgg || colValIdx[j].isAgg) {
-                        if (!agg_type_check(rowExtra.attrInfo, c.attrName))
+                        if (!agg_type_check(rowExtra.attrInfo, c.entityName))
                             throw new Error("Function can only be used to numerical>");
                         interCrossTable[x][y] = {
-                            value: aggregate_use(__assign(__assign({}, rowValIdx[i].preVal), colValIdx[j].preVal), rowExtra.data, c.attrName, valDict, FUNC_SUM),
-                            // source: c.attrName,
-                            sourceBlockId: c.blockId,
+                            value: aggregate_use(__assign(__assign({}, rowValIdx[i].preVal), colValIdx[j].preVal), rowExtra.data, c.entityName, valDict, FUNC_SUM),
+                            // source: c.entityName,
+                            sourcePuzzleId: c.puzzleId,
                             rowSpan: 1, colSpan: 1,
                             type: BlockType.CELL,
                             style: cellStyle
@@ -23109,9 +23150,9 @@ var gen_inter_cross_table = function (interCrossTable, rowExtra, colExtra, cell,
                     }
                     else {
                         interCrossTable[x][y] = {
-                            value: get_cell_val(__assign(__assign({}, rowValIdx[i].preVal), colValIdx[j].preVal), rowExtra.data, c.attrName),
-                            // source: c.attrName,
-                            sourceBlockId: c.blockId,
+                            value: get_cell_val(__assign(__assign({}, rowValIdx[i].preVal), colValIdx[j].preVal), rowExtra.data, c.entityName),
+                            // source: c.entityName,
+                            sourcePuzzleId: c.puzzleId,
                             rowSpan: 1, colSpan: 1,
                             type: BlockType.CELL,
                             style: cellStyle
@@ -23139,7 +23180,7 @@ var gen_blank_facet_table = function (rawTable, header, info, depth, outerX, bia
         var hb = header_2[_i];
         var start = innerX + outerX + bias, subFacetSpan = 0;
         var nowBeforeBias = 0, nowAfterBias = 0;
-        var source = (_c = hb.attrName) !== null && _c !== void 0 ? _c : hb.function, pos = 0;
+        var source = (_c = hb.entityName) !== null && _c !== void 0 ? _c : hb.function, pos = 0;
         var eachIterCount = new Array();
         if (hb.key) {
             if (info.tbClass === ROW_TABLE) {
@@ -23160,7 +23201,7 @@ var gen_blank_facet_table = function (rawTable, header, info, depth, outerX, bia
             var x = innerX + outerX + bias, y = depth + keyBias;
             if (source)
                 info.preVal[source] = hb.values[i];
-            if (!get_cell_head_is_valid(info.preVal, info.data) && hb.attrName) {
+            if (!get_cell_head_is_valid(info.preVal, info.data) && hb.entityName) {
                 delete info.preVal[source];
                 continue;
             }
@@ -23193,7 +23234,7 @@ var gen_blank_facet_table = function (rawTable, header, info, depth, outerX, bia
                             rawTable[x + j][y + beforeBias + afterBias].colSpan = tmpFacetSpan + blank;
                     }
                 }
-                if (rawTable[x + j][y + beforeBias] !== undefined && j === 0 && hb.blankLine && pos % hb.facet === 0) {
+                if (rawTable[x + j][y + beforeBias] !== undefined && j === 0 && hb.blankLine && pos % hb.division === 0) {
                     if (beforeBias > 0) {
                         rawTable[x + j][y].hasBlank = true;
                         rawTable[x + j][y].blankLen = { len: len - y, y: y, maxLen: hbLen };
@@ -23205,11 +23246,11 @@ var gen_blank_facet_table = function (rawTable, header, info, depth, outerX, bia
                     }
                 }
             }
-            if (hb.facet > 1) {
+            if (hb.division > 1) {
                 var copyLen = len - y;
-                var group = pos % hb.facet;
+                var group = pos % hb.division;
                 var preX = 0;
-                for (var j = 0; j < Math.floor(pos / hb.facet); j++)
+                for (var j = 0; j < Math.floor(pos / hb.division); j++)
                     preX += eachIterCount[j];
                 for (var j = 0; j < iterCount; j++) {
                     for (var k = 0; k < copyLen; k++) {
@@ -23227,7 +23268,7 @@ var gen_blank_facet_table = function (rawTable, header, info, depth, outerX, bia
                         }
                     }
                 }
-                var delta = (hb.facet - 1) * copyLen;
+                var delta = (hb.division - 1) * copyLen;
                 len += delta;
             }
             innerX += iterCount;
@@ -23237,11 +23278,11 @@ var gen_blank_facet_table = function (rawTable, header, info, depth, outerX, bia
                 maxLen = len, hbLen.val = len;
             subFacetSpan += tmpFacetSpan;
         }
-        if (hb.facet > 1)
-            subFacetSpan = Math.ceil(subFacetSpan / hb.facet);
+        if (hb.division > 1)
+            subFacetSpan = Math.ceil(subFacetSpan / hb.division);
         facetSpan += subFacetSpan;
         if (hb.blankLine)
-            blankLine += Math.ceil(pos / hb.facet);
+            blankLine += Math.ceil(pos / hb.division);
     }
     var delta1 = isPreMerge ? 1 : 0;
     return [innerX + delta1, maxLen, facetSpan + delta1, blankLine];
@@ -23384,7 +23425,7 @@ var gen_grid_merged_table = function (table, idDict) {
     var useRecord = Array.from({ length: table.length }, function () { return new Array(rowLen).fill(false); });
     for (var i = 0; i < table.length; i++) {
         for (var j = 0; j < table[i].length; j++) {
-            var tmp = table[i][j], loc = new Array(), id = tmp.sourceBlockId, fixJ = j;
+            var tmp = table[i][j], loc = new Array(), id = tmp.sourcePuzzleId, fixJ = j;
             while (useRecord[i][fixJ])
                 fixJ++;
             if (id) {
@@ -23408,7 +23449,7 @@ var gen_grid_merged_table = function (table, idDict) {
         if (!retTable[pos])
             retTable[pos] = new Array();
         for (var j = 0; j < rowLen; j++) {
-            var tmp = vvTable[i][j], id = tmp.sourceBlockId;
+            var tmp = vvTable[i][j], id = tmp.sourcePuzzleId;
             var mergeType = GridMerge.Merged;
             var isRowHeader = (id && idDict.rowDict[id]) ? true : false;
             var isColHeader = (id && idDict.colDict[id]) ? true : false;
@@ -23422,7 +23463,7 @@ var gen_grid_merged_table = function (table, idDict) {
                 continue;
             retTable[pos].push({
                 value: tmp.value,
-                sourceBlockId: tmp.sourceBlockId,
+                sourcePuzzleId: tmp.sourcePuzzleId,
                 rowSpan: rs,
                 colSpan: cs,
                 type: tmp.type,
@@ -23473,14 +23514,14 @@ var gen_facet_ME_table = function (table, tbClass, idDict) {
     for (var i = 0; i < formatTable.length; i++) {
         for (var j = 0; j < formatTable[i].length; j++) {
             var tmp = formatTable[i][j];
-            var value = tmp.value, id = tmp.sourceBlockId;
+            var value = tmp.value, id = tmp.sourcePuzzleId;
             if (tbClass === ROW_TABLE) {
                 var bias = tmp.rowSpan;
                 if (!tmp.skip && id) {
                     var rInfo = idDict.rowDict[id];
                     if (rInfo && rInfo.facetMerge && rInfo.gridMerge != GridMerge.UnmergedAll) {
                         while (i + bias < formatTable.length && value === formatTable[i + bias][j].value &&
-                            id === formatTable[i + bias][j].sourceBlockId) {
+                            id === formatTable[i + bias][j].sourcePuzzleId) {
                             tmp.rowSpan += formatTable[i + bias][j].rowSpan;
                             for (var k = 0; k < formatTable[i + bias][j].rowSpan; k++)
                                 formatTable[i + bias + k][j].isSkip = true;
@@ -23504,7 +23545,7 @@ var gen_facet_ME_table = function (table, tbClass, idDict) {
                     var cInfo = idDict.colDict[id];
                     if (cInfo && cInfo.facetMerge && cInfo.gridMerge != GridMerge.UnmergedAll) {
                         while (j + bias < formatTable[i].length && value === formatTable[i][j + bias].value &&
-                            id === formatTable[i][j + bias].sourceBlockId) {
+                            id === formatTable[i][j + bias].sourcePuzzleId) {
                             tmp.colSpan += formatTable[i][j + bias].colSpan;
                             for (var k = 0; k < formatTable[i][j + bias].colSpan; k++)
                                 formatTable[i][j + bias + k].isSkip = true;
@@ -23548,7 +23589,7 @@ var gen_styled_table = function (table, styles, idDict) {
     for (var i = 0; i < table.length; i++) {
         retTable[i] = new Array();
         for (var j = 0; j < table[i].length; j++) {
-            var tmp = __assign({}, table[i][j]), id = tmp.sourceBlockId, fixJ = j;
+            var tmp = __assign({}, table[i][j]), id = tmp.sourcePuzzleId, fixJ = j;
             while (useRecord[i][fixJ])
                 fixJ++;
             var loc = { x: i + 1, y: fixJ + 1 };
@@ -23604,8 +23645,8 @@ var table_process = function (tbClass, data, _a) {
     var colDepth = calc_head_depth(columnHeader);
     // let rowSize = calc_head_size(rowHeader);
     // let colSize = calc_head_size(columnHeader);
-    var rowSize = calc_head_size2(rowHeader, data.values);
-    var colSize = calc_head_size2(columnHeader, data.values);
+    var rowSize = calc_head_size2(rowHeader, data);
+    var colSize = calc_head_size2(columnHeader, data);
     if (tbClass == ROW_TABLE) {
         var headTmpSpan = Array.from({ length: rowDepth }, function () { return ({}); });
         var headSpan = new Array(rowDepth).fill(1);
@@ -23637,12 +23678,12 @@ var table_process = function (tbClass, data, _a) {
         var valDict = {};
         for (var _f = 0, _g = Object.values(idDict.rowDict); _f < _g.length; _f++) {
             var d = _g[_f];
-            if (d.attrName)
-                valDict[d.attrName] = d.values;
+            if (d.entityName)
+                valDict[d.entityName] = d.values;
         }
         var extra = {
             preVal: {},
-            data: data.values,
+            data: data,
             cell: cell,
             cellTable: Array.from({ length: rowSize }, function () { return new Array(); }),
             attrInfo: attrInfo,
@@ -23672,7 +23713,7 @@ var table_process = function (tbClass, data, _a) {
                     processTable[i].push({
                         value: tmp.value,
                         // source: tmp.source,
-                        sourceBlockId: tmp.sourceBlockId,
+                        sourcePuzzleId: tmp.sourcePuzzleId,
                         rowSpan: tmp.rowSpan,
                         colSpan: tmp.colSpan,
                         type: tmp.type,
@@ -23683,7 +23724,7 @@ var table_process = function (tbClass, data, _a) {
                     processTable[i].push({
                         value: tmp.value,
                         // source: tmp.source,
-                        sourceBlockId: tmp.sourceBlockId,
+                        sourcePuzzleId: tmp.sourcePuzzleId,
                         rowSpan: 1,
                         colSpan: headKeySpan[j],
                         type: tmp.type,
@@ -23700,7 +23741,7 @@ var table_process = function (tbClass, data, _a) {
                 processTable[i].push({
                     value: c.value,
                     // source: c.source,
-                    sourceBlockId: c.sourceBlockId,
+                    sourcePuzzleId: c.sourcePuzzleId,
                     rowSpan: 1,
                     colSpan: 1,
                     type: c.type,
@@ -23716,7 +23757,7 @@ var table_process = function (tbClass, data, _a) {
                 processTable[i].push({
                     value: undefined,
                     // source: undefined,
-                    sourceBlockId: undefined,
+                    sourcePuzzleId: undefined,
                     rowSpan: 1,
                     colSpan: 1,
                     type: undefined,
@@ -23728,7 +23769,7 @@ var table_process = function (tbClass, data, _a) {
             layersBias: layersBias,
             cellLength: maxLength + rowDepth,
             tbClass: tbClass,
-            data: data.values,
+            data: data,
             preVal: {},
             // oldTable: JSON.parse(JSON.stringify(processTable))
         };
@@ -23768,12 +23809,12 @@ var table_process = function (tbClass, data, _a) {
         var valDict = {};
         for (var _l = 0, _m = Object.values(idDict.colDict); _l < _m.length; _l++) {
             var d = _m[_l];
-            if (d.attrName)
-                valDict[d.attrName] = d.values;
+            if (d.entityName)
+                valDict[d.entityName] = d.values;
         }
         var extra = {
             preVal: {},
-            data: data.values,
+            data: data,
             cell: cell,
             cellTable: Array.from({ length: colSize }, function () { return new Array(); }),
             attrInfo: attrInfo,
@@ -23805,7 +23846,7 @@ var table_process = function (tbClass, data, _a) {
                     processTable[j].push({
                         value: tmp.value,
                         // source: tmp.source,
-                        sourceBlockId: tmp.sourceBlockId,
+                        sourcePuzzleId: tmp.sourcePuzzleId,
                         rowSpan: tmp.rowSpan,
                         colSpan: tmp.colSpan,
                         type: tmp.type,
@@ -23816,7 +23857,7 @@ var table_process = function (tbClass, data, _a) {
                     processTable[j].push({
                         value: tmp.value,
                         // source: tmp.source,
-                        sourceBlockId: tmp.sourceBlockId,
+                        sourcePuzzleId: tmp.sourcePuzzleId,
                         rowSpan: headKeySpan[i],
                         colSpan: 1,
                         type: tmp.type,
@@ -23833,7 +23874,7 @@ var table_process = function (tbClass, data, _a) {
                 processTable[j].push({
                     value: c.value,
                     // source: c.source,
-                    sourceBlockId: c.sourceBlockId,
+                    sourcePuzzleId: c.sourcePuzzleId,
                     rowSpan: 1,
                     colSpan: 1,
                     type: c.type,
@@ -23849,7 +23890,7 @@ var table_process = function (tbClass, data, _a) {
                 processTable[i].push({
                     value: undefined,
                     // source: undefined,
-                    sourceBlockId: undefined,
+                    sourcePuzzleId: undefined,
                     rowSpan: 1,
                     colSpan: 1,
                     type: undefined,
@@ -23861,7 +23902,7 @@ var table_process = function (tbClass, data, _a) {
             layersBias: layersBias,
             cellLength: maxLength + colDepth,
             tbClass: tbClass,
-            data: data.values,
+            data: data,
             preVal: {},
             // oldTable: JSON.parse(JSON.stringify(processTable))
         };
@@ -23901,7 +23942,7 @@ var table_process = function (tbClass, data, _a) {
         console.log("head key row span", headKeyRowSpan);
         var rowExtra = {
             preVal: {},
-            data: data.values,
+            data: data,
             cell: cell,
             cellTable: Array.from({ length: rowSize }, function () { return new Array(); }),
             attrInfo: attrInfo,
@@ -23940,7 +23981,7 @@ var table_process = function (tbClass, data, _a) {
         console.log("head key col span", headKeyColSpan);
         var colExtra = {
             preVal: {},
-            data: data.values,
+            data: data,
             cell: cell,
             cellTable: Array.from({ length: rowSize }, function () { return new Array(); }),
             attrInfo: attrInfo,
@@ -23958,13 +23999,13 @@ var table_process = function (tbClass, data, _a) {
         var valDict = {};
         for (var _s = 0, _t = Object.values(idDict.rowDict); _s < _t.length; _s++) {
             var d = _t[_s];
-            if (d.attrName)
-                valDict[d.attrName] = d.values;
+            if (d.entityName)
+                valDict[d.entityName] = d.values;
         }
         for (var _u = 0, _v = Object.values(idDict.colDict); _u < _v.length; _u++) {
             var d = _v[_u];
-            if (d.attrName)
-                valDict[d.attrName] = d.values;
+            if (d.entityName)
+                valDict[d.entityName] = d.values;
         }
         gen_inter_cross_table(interTable, rowExtra, colExtra, cell, valDict);
         // console.log('@', interTable)
@@ -23998,7 +24039,7 @@ var table_process = function (tbClass, data, _a) {
                         rowProcess[i][j] = {
                             value: tmp.value,
                             // source: tmp.source,
-                            sourceBlockId: tmp.sourceBlockId,
+                            sourcePuzzleId: tmp.sourcePuzzleId,
                             rowSpan: tmp.rowSpan,
                             colSpan: tmp.colSpan,
                             type: tmp.type,
@@ -24009,7 +24050,7 @@ var table_process = function (tbClass, data, _a) {
                         rowProcess[i][j] = {
                             value: tmp.value,
                             // source: tmp.source,
-                            sourceBlockId: tmp.sourceBlockId,
+                            sourcePuzzleId: tmp.sourcePuzzleId,
                             rowSpan: 1,
                             colSpan: headKeyRowSpan[j],
                             type: tmp.type,
@@ -24028,7 +24069,7 @@ var table_process = function (tbClass, data, _a) {
                 layersBias: layersRowBias,
                 cellLength: crossDepth_1,
                 tbClass: ROW_TABLE,
-                data: data.values,
+                data: data,
                 preVal: {},
             };
             gen_blank_facet_table(rowProcTrans, rowHeader, rowInfo, 0, 0);
@@ -24072,7 +24113,7 @@ var table_process = function (tbClass, data, _a) {
                         colProcess[j].push({
                             value: tmp.value,
                             // source: tmp.source,
-                            sourceBlockId: tmp.sourceBlockId,
+                            sourcePuzzleId: tmp.sourcePuzzleId,
                             rowSpan: tmp.rowSpan,
                             colSpan: tmp.colSpan,
                             type: tmp.type,
@@ -24083,7 +24124,7 @@ var table_process = function (tbClass, data, _a) {
                         colProcess[j].push({
                             value: tmp.value,
                             // source: tmp.source,
-                            sourceBlockId: tmp.sourceBlockId,
+                            sourcePuzzleId: tmp.sourcePuzzleId,
                             rowSpan: headKeyColSpan[i],
                             colSpan: 1,
                             type: tmp.type,
@@ -24102,7 +24143,7 @@ var table_process = function (tbClass, data, _a) {
                 layersBias: layersColBias,
                 cellLength: maxLength,
                 tbClass: COLUM_TABLE,
-                data: data.values,
+                data: data,
                 preVal: {},
                 alignHeader: rowPart,
             };
@@ -24132,7 +24173,7 @@ var table_process = function (tbClass, data, _a) {
                 cs += headKeyRowSpan[i];
             finalTable[0].unshift({
                 value: undefined,
-                sourceBlockId: undefined,
+                sourcePuzzleId: undefined,
                 rowSpan: rs, colSpan: cs,
                 type: BlockType.TITLE,
                 style: undefined
@@ -24168,7 +24209,7 @@ var table_process = function (tbClass, data, _a) {
                         colProcess[i][j] = {
                             value: tmp.value,
                             // source: tmp.source,
-                            sourceBlockId: tmp.sourceBlockId,
+                            sourcePuzzleId: tmp.sourcePuzzleId,
                             rowSpan: tmp.rowSpan,
                             colSpan: tmp.colSpan,
                             type: tmp.type,
@@ -24179,7 +24220,7 @@ var table_process = function (tbClass, data, _a) {
                         colProcess[i][j] = {
                             value: tmp.value,
                             // source: tmp.source,
-                            sourceBlockId: tmp.sourceBlockId,
+                            sourcePuzzleId: tmp.sourcePuzzleId,
                             rowSpan: headKeyColSpan[i],
                             colSpan: 1,
                             type: tmp.type,
@@ -24198,7 +24239,7 @@ var table_process = function (tbClass, data, _a) {
                 layersBias: layersColBias,
                 cellLength: crossSize,
                 tbClass: COLUM_TABLE,
-                data: data.values,
+                data: data,
                 preVal: {},
             };
             gen_blank_facet_table(colProcTrans, columnHeader, colInfo, 0, 0);
@@ -24243,7 +24284,7 @@ var table_process = function (tbClass, data, _a) {
                         rowProcess[i].push({
                             value: tmp.value,
                             // source: tmp.source,
-                            sourceBlockId: tmp.sourceBlockId,
+                            sourcePuzzleId: tmp.sourcePuzzleId,
                             rowSpan: tmp.rowSpan,
                             colSpan: tmp.colSpan,
                             type: tmp.type,
@@ -24254,7 +24295,7 @@ var table_process = function (tbClass, data, _a) {
                         rowProcess[i].push({
                             value: tmp.value,
                             // source: tmp.source,
-                            sourceBlockId: tmp.sourceBlockId,
+                            sourcePuzzleId: tmp.sourcePuzzleId,
                             rowSpan: 1,
                             colSpan: headKeyRowSpan[j],
                             type: tmp.type,
@@ -24273,7 +24314,7 @@ var table_process = function (tbClass, data, _a) {
                 layersBias: layersRowBias,
                 cellLength: maxLength,
                 tbClass: ROW_TABLE,
-                data: data.values,
+                data: data,
                 preVal: {},
                 alignHeader: colPart,
             };
@@ -24299,7 +24340,7 @@ var table_process = function (tbClass, data, _a) {
                 cs += headKeyRowSpan[i];
             finalTable[0].unshift({
                 value: undefined,
-                sourceBlockId: undefined,
+                sourcePuzzleId: undefined,
                 rowSpan: rs, colSpan: cs,
                 type: BlockType.TITLE,
                 style: undefined
@@ -24307,7 +24348,7 @@ var table_process = function (tbClass, data, _a) {
             console.log('final cross', finalTable);
         }
     }
-    // finalTable = gen_valid_value_table(finalTable, tbClass, data.values, idDict)
+    // finalTable = gen_valid_value_table(finalTable, tbClass, data, idDict)
     finalTable = gen_grid_merged_table(finalTable, idDict);
     var actTBClass = tbClass;
     if (tbClass === CROSS_TABLE) {
@@ -24323,15 +24364,15 @@ var table_process = function (tbClass, data, _a) {
     return finalTable;
 };
 var transform = function (task) {
-    var data = task.data, spec = task.spec;
+    var data = task.metaData, spec = __rest(task, ["metaData"]);
     try {
-        spec_init({ data: data, spec: spec });
+        spec_init(task);
     }
     catch (err) {
         console.log('Warning:', err.message);
         return new Array();
     }
-    var rowHeader = spec.rowHeader, columnHeader = spec.columnHeader, cell = spec.cell, styles = spec.styles, attrInfo = spec.attrInfo;
+    var rowHeader = spec.rowHeader, columnHeader = spec.columnHeader, cell = spec.cell, styles = spec.globalStyle, attrInfo = spec.attrInfo;
     // check table class
     var tableClass = "";
     if (rowHeader !== undefined && rowHeader.length > 0) {
@@ -24386,12 +24427,12 @@ var fill_header_spec = function (val, extra, name, depth) {
     if (val[depth] === undefined)
         return undefined;
     var spec = {
-        attrName: "".concat(name).concat(depth + 1),
-        blockId: genBid(),
+        entityName: "".concat(name).concat(depth + 1),
+        puzzleId: genBid(),
         values: new Array(),
         children: new Array()
     };
-    extra.pId = spec.blockId;
+    extra.pId = spec.puzzleId;
     for (var v in val[depth])
         spec.values.push(v);
     var cSpec = fill_header_spec(val, extra, name, depth + 1);
@@ -24484,8 +24525,8 @@ var parseTable = function (file, mode) { return __awaiter(void 0, void 0, void 0
             if (ch !== undefined)
                 spec.columnHeader.push(ch);
             c = {
-                attrName: "cell1",
-                blockId: genBid(),
+                entityName: "cell1",
+                puzzleId: genBid(),
                 rowParentId: extraR.pId,
                 colParentId: extraC.pId,
                 dataType: DataType.CATEGORICAL,
@@ -24501,7 +24542,7 @@ var parseTable = function (file, mode) { return __awaiter(void 0, void 0, void 0
                             tmp["rowEntity".concat(k + 1)] = data[i][k];
                         for (k = 0; k < colDepth; k++)
                             tmp["colEntity".concat(k + 1)] = data[k][j];
-                        tmp[c.attrName] = Number(data[i][j]);
+                        tmp[c.entityName] = Number(data[i][j]);
                         spec.data.push(tmp);
                     }
                     else {
@@ -24511,7 +24552,7 @@ var parseTable = function (file, mode) { return __awaiter(void 0, void 0, void 0
                                 tmp["rowEntity".concat(k + 1)] = data[i][k];
                             for (k = 0; k < colDepth; k++)
                                 tmp["colEntity".concat(k + 1)] = data[k][j];
-                            tmp[c.attrName] = data[i][j];
+                            tmp[c.entityName] = data[i][j];
                             spec.data.push(tmp);
                         }
                     }
@@ -24587,8 +24628,8 @@ var parseTable = function (file, mode) { return __awaiter(void 0, void 0, void 0
                 spec.columnHeader.push(ch);
             for (j = rowDepth; j < cLen; j++) {
                 c = {
-                    attrName: "cell".concat(j + 1 - rowDepth),
-                    blockId: genBid(),
+                    entityName: "cell".concat(j + 1 - rowDepth),
+                    puzzleId: genBid(),
                     rowParentId: extraR.pId,
                     colParentId: extraC.pId,
                     dataType: DataType.CATEGORICAL,
@@ -24603,7 +24644,7 @@ var parseTable = function (file, mode) { return __awaiter(void 0, void 0, void 0
                             tmp["rowEntity".concat(k + 1)] = data[i][k];
                         for (k = 0; k < colDepth; k++)
                             tmp["colEntity".concat(k + 1)] = data[k][j];
-                        tmp[c.attrName] = Number(data[i][j]);
+                        tmp[c.entityName] = Number(data[i][j]);
                         spec.data.push(tmp);
                     }
                     else {
@@ -24613,7 +24654,7 @@ var parseTable = function (file, mode) { return __awaiter(void 0, void 0, void 0
                                 tmp["rowEntity".concat(k + 1)] = data[i][k];
                             for (k = 0; k < colDepth; k++)
                                 tmp["colEntity".concat(k + 1)] = data[k][j];
-                            tmp[c.attrName] = data[i][j];
+                            tmp[c.entityName] = data[i][j];
                             spec.data.push(tmp);
                         }
                     }

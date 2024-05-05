@@ -4,7 +4,7 @@ export const COLUM_TABLE = "column table"
 
 export interface interCell {
   value: string;
-  sourceBlockId: string;
+  sourcePuzzleId: string;
   rowSpan: number;
   colSpan: number;
   type: string;

@@ -93,24 +93,46 @@ const style_selector_fill =  (bId, loc, styles: StyleClass, idDict) => {
 const header_fill = (attrInfo: AttrInfo, styles: StyleClass, header?: HeaderChannel): void => {
   if(header !== undefined) {
     for(let hb of header) {
+      if(hb.structure && Object.keys(hb.structure).length!==0) {
+        let st = hb.structure
+        if(st.hierarchy) {
+          hb.entityMerge = st.hierarchy.groupBy
+          hb.gridMerge = st.hierarchy.cellMerge
+        }
+        if(st.facet) {
+          hb.division = st.facet.division
+          hb.facetMerge = st.facet.facetMerge
+          hb.facetEnd = st.facet.facetEnd
+        }
+        if(st.marginalia) {
+          hb.blankLine = st.marginalia.spacing
+          hb.key = st.marginalia.key
+        }
+      } 
       hb.entityMerge = hb.entityMerge ?? false
       hb.gridMerge = hb.gridMerge ?? GridMerge.Merged
-      hb.facet = hb.facet ?? 1
+      hb.division = hb.division ?? 1
       hb.facetMerge = hb.facetMerge ?? true 
       hb.facetEnd = hb.facetEnd ?? false
       hb.blankLine = hb.blankLine ?? false 
-      if(hb.title === "") hb.title = hb.attrName
       if(hb.key && Object.keys(hb.key).length === 0) hb.key = undefined
+      if(hb.title === "") hb.title = hb.entityName
+      
+      if(hb.puzzleStyle && Object.keys(hb.puzzleStyle).length!==0) {
+        let ps = hb.puzzleStyle
+        if(ps.style && Object.keys(ps.style).length!==0) hb.style = ps.style
+      }
       let headerStyle = hb.className ? deepAssign({}, styles[hb.className]) : {}
       if(!hb.style || Object.keys(hb.style).length===0) hb.style = {}
       hb.style = deepAssign(headerStyle, hb.style)
+
       if(hb.function !== undefined) {
         if(hb.function === FUNC_SUM) hb.values = ['Total']
         else hb.values = ["Function(Unknown)"]
         continue
       }
       let attr = attrInfo.find((obj) => {
-        return obj.name === hb.attrName
+        return obj.name === hb.entityName
       })
       if(attr !== undefined) hb.values = hb.values ?? attr.values
       // if(hb.children && hb.children.length===0) hb.children = undefined
@@ -121,21 +143,28 @@ const header_fill = (attrInfo: AttrInfo, styles: StyleClass, header?: HeaderChan
 
 // init spec default value
 const spec_init = (task: Spec): void => {
-  let { data, spec } = task;
+  let { metaData: data, ...spec } = task;
   if(spec.rowHeader === undefined) spec.rowHeader = new Array()
   if(spec.columnHeader === undefined) spec.columnHeader = new Array()
   if(spec.cell === undefined) spec.cell = new Array()
-  let { rowHeader, columnHeader, cell, styles, attrInfo } = spec
+  let { rowHeader, columnHeader, cell, globalStyle: styles, attrInfo } = spec
   // make sure the header can not be both undefined
   if((rowHeader===undefined || rowHeader.length===0) && 
             (columnHeader===undefined || columnHeader.length===0)) {
     throw new Error("RowHeader and ColumnHeader can not be both undefined!")
   } else {
-    if(!styles || Object.keys(styles).length===0) spec.styles = {}
+    if(!styles || Object.keys(styles).length===0) {
+      spec.globalStyle = {}
+      styles = {}
+    }
     for(let header of [rowHeader, columnHeader]) {
       header_fill(attrInfo, styles, header)
     }
     for(let c of cell) {
+      if(c.puzzleStyle && Object.keys(c.puzzleStyle).length!==0) {
+        let ps = c.puzzleStyle
+        if(ps.style && Object.keys(ps.style).length!==0) c.style = ps.style
+      }
       let cellStyle = c.className ? deepAssign({}, styles[c.className]) : {}
       if(!c.style || Object.keys(c.style).length===0) c.style = {}
       c.style = deepAssign(cellStyle, c.style)
@@ -146,7 +175,7 @@ const spec_init = (task: Spec): void => {
 // process style to css format
 const style_process = (style: StyleClass) => {
   let output = {}
-  let { border, font, background, indent} = style
+  let { border, font, backgroundColor, indent} = style
   // Border
   if(border) {
     let positionKey = "", bdFormat = new Array()
@@ -178,20 +207,21 @@ const style_process = (style: StyleClass) => {
   }
   // Font
   if(font) {
-    if(font.color) output['color'] = font.color
-    if(font.size) output['font-size'] = font.size + "px"
-    if(font.weight) {
-      if(font.weight === FontWeight.REGULAR) output['font-family'] = "Inter-Regular-9"
-      else if(font.weight === FontWeight.BOLD) output['font-family'] = "Inter-Bold-4"
-      else if(font.weight === FontWeight.SEMIBOLD) output['font-family'] = "Inter-Medium-8"
+    if(font.fontColor) output['color'] = font.fontColor
+    if(font.fontSize) output['font-size'] = font.fontSize + "px"
+    if(font.fontWeight) {
+      if(font.fontWeight === FontWeight.REGULAR) output['font-family'] = "Inter-Regular-9"
+      else if(font.fontWeight === FontWeight.BOLD) output['font-family'] = "Inter-Bold-4"
+      else if(font.fontWeight === FontWeight.SEMIBOLD) output['font-family'] = "Inter-Medium-8"
     }
     if(font.underscore === FontUnderscore.Single) output['text-decoration'] = "underline"
     else if(font.underscore === FontUnderscore.Double) output['text-decoration'] = "underline double"
   }
   // Background
-  if(background) {
-    if(background.color) output['background-color'] = background.color
-  }
+  // if(background) {
+  //   if(background.color) output['background-color'] = background.color
+  // }
+  if(backgroundColor) output['background-color'] = backgroundColor
   // Indent
   if(indent) output['padding-left'] = indent + "px"
 
@@ -236,7 +266,7 @@ const calc_head_size2 = (channel?: HeaderChannel, data = {}, preVal = {}): numbe
   let size = 0
   for(let hb of channel) {
     for(let v of hb.values!) {
-      if(hb.attrName) preVal[hb.attrName] = v
+      if(hb.entityName) preVal[hb.entityName] = v
       let isValid = get_cell_head_is_valid(preVal, data)
       if(isValid) {
         if(hb.entityMerge) size += calc_head_size2(hb.children, data, preVal) + 1
@@ -246,7 +276,7 @@ const calc_head_size2 = (channel?: HeaderChannel, data = {}, preVal = {}): numbe
         }
       }
       // console.log('calc_size', preVal, size); 
-      if(hb.attrName) delete preVal[hb.attrName]
+      if(hb.entityName) delete preVal[hb.entityName]
     }
   }
   return size
@@ -320,8 +350,8 @@ const get_structure_type = (channel?: HeaderChannel) => {
   let hb0: HeaderBlock = channel[0], facetList: number[][] = Array.from({length:2}, () => new Array())
   let blankList: boolean[] = new Array()
   for(let hb of channel) {
-    facetList[0].push(hb.facet!)
-    facetList[1].push(hb.values!.length / hb.facet!)
+    facetList[0].push(hb.division!)
+    facetList[1].push(hb.values!.length / hb.division!)
     blankList.push(hb.blankLine!)
   }
   return {
@@ -336,7 +366,7 @@ const get_structure_type = (channel?: HeaderChannel) => {
 const get_header_is_facet = (channel?: HeaderChannel) => {
   if (!channel || channel.length == 0) return false
   for(let hb of channel) {
-    if(hb.facet! > 1) return true
+    if(hb.division! > 1) return true
     let res = get_header_is_facet(hb.children)
     if(res) return true
   }
@@ -350,8 +380,8 @@ const get_header_id_dict = (channel?: HeaderChannel, title?, depth = 0, preFEnd 
   for(let hb of channel) {
     let facetEnd = preFEnd ? true : hb.facetEnd
     let info = get_header_id_dict(hb.children, title, depth+1, facetEnd)
-    info[hb.blockId] = {
-      attrName: hb.attrName,
+    info[hb.puzzleId] = {
+      entityName: hb.entityName,
       function: hb.function,
       values: hb.values,
       hasBlank: hb.blankLine, 
@@ -374,7 +404,7 @@ const get_cell_id_dict = (channel?: CellChannel) => {
   if (!channel || channel.length == 0) return {}
   let res = {}
   for(let c of channel) {
-    res[c.blockId] = {
+    res[c.puzzleId] = {
       rowPId: c.rowParentId,
       colPId: c.colParentId,
     }
@@ -423,7 +453,7 @@ const get_key = (key: Key, level: number, preKey: string) => {
   } else if(key.pattern === Pattern.ALPHABETIC) {
     nowKey = KEY_ALPHABETIC[level]
   }
-  return (key.isInherited && preKey!=='') ? [preKey, nowKey].join('.') : nowKey
+  return (key.nesting && preKey!=='') ? [preKey, nowKey].join('.') : nowKey
 }
 
 // Aggregate Function
@@ -459,9 +489,9 @@ const aggregate_sum = (preVal, data, key, valDict) => {
 }
 
 // check cell type which used for agg function
-const agg_type_check = (attrInfo: AttrInfo, attrName: string): boolean => {
+const agg_type_check = (attrInfo: AttrInfo, entityName: string): boolean => {
   let attr = attrInfo.find((obj) => {
-    return obj.name == attrName
+    return obj.name == entityName
   })
   if(attr && attr.dataType===DataType.NUMERICAL) return true 
   return false
@@ -478,7 +508,7 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
   let currentKeyLayer = leftBias + rightBias
   for(let rh of rowHeader) {
     let isLeaf = (rh.children && rh.children.length) ? false : true
-    let sourceBlockId = rh.blockId, source = rh.attrName ?? rh.function
+    let sourcePuzzleId = rh.puzzleId, source = rh.entityName ?? rh.function
     let headerDepth = depth + keyBias + leftBias, keyDepth = headerDepth
     // let headerStyle = style_process(rh.style)
     let headerStyle = rh.style
@@ -495,7 +525,7 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
       let keyData = {
         value: key, 
         source: '@__KEY',
-        sourceBlockId,
+        sourcePuzzleId,
         rowSpan: 1, colSpan: 1,
         isUsed: false,
         isLeaf,
@@ -504,7 +534,7 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
         style: headerStyle,
       }
       if(source) extra.preVal[source] = rh.values[i]
-      if(!get_cell_head_is_valid(extra.preVal, extra.data) && rh.attrName) {
+      if(!get_cell_head_is_valid(extra.preVal, extra.data) && rh.entityName) {
         delete extra.preVal[source]
         continue
       }
@@ -525,7 +555,7 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
         interRowTable[innerX+outerX+bias][headerDepth] = {
           value: headValue,
           source,
-          sourceBlockId,
+          sourcePuzzleId,
           rowSpan: 1, colSpan: span,
           isUsed: false, 
           isLeaf,
@@ -542,7 +572,7 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
           interRowTable[innerX+outerX+j+bias][headerDepth] = {
             value: headValue,
             source,
-            sourceBlockId,
+            sourcePuzzleId,
             rowSpan: rs, colSpan: span,
             isUsed: false,
             isLeaf,
@@ -555,26 +585,26 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
       // process cell unit
       if(!extra.notSearchCell && isLeaf) {
         for(let c of extra.cell) {
-          if(c.rowParentId === rh.blockId) {
+          if(c.rowParentId === rh.puzzleId) {
             // let cellStyle = style_process(c.style)
             let cellStyle = c.style
             // process function cell
             if(rh.function) {
-              if(!agg_type_check(extra.attrInfo, c.attrName)) throw new Error("Function can only be used to numerical>")
+              if(!agg_type_check(extra.attrInfo, c.entityName)) throw new Error("Function can only be used to numerical>")
               delete extra.preVal[source]
               extra.cellTable[innerX+outerX+bias].push({
-                value: aggregate_use(extra.preVal, extra.data, c.attrName, extra.valDict, FUNC_SUM),
-                source: c.attrName,
-                sourceBlockId: c.blockId,
+                value: aggregate_use(extra.preVal, extra.data, c.entityName, extra.valDict, FUNC_SUM),
+                source: c.entityName,
+                sourcePuzzleId: c.puzzleId,
                 type: BlockType.CELL,
                 style: cellStyle
               }) 
             // Process attr cell
             } else {
               extra.cellTable[innerX+outerX+bias].push({
-                value: get_cell_val(extra.preVal, extra.data, c.attrName),
-                source: c.attrName,
-                sourceBlockId: c.blockId,
+                value: get_cell_val(extra.preVal, extra.data, c.entityName),
+                source: c.entityName,
+                sourcePuzzleId: c.puzzleId,
                 type: BlockType.CELL,
                 style: cellStyle
               }) 
@@ -587,7 +617,7 @@ const gen_inter_row_table = (interRowTable, rowHeader, extra, width: number, dep
         extra.valIdx.push({
             idx: innerX+outerX+bias,
             preVal: Object.assign({}, extra.preVal),
-            blockId: rh.blockId,
+            puzzleId: rh.puzzleId,
             isAgg: rh.function ? true : false
           })
       }
@@ -610,7 +640,7 @@ const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: nu
   let currentKeyLayer = topBias + bottomBias
   for(let ch of columnHeader) {
     let isLeaf = (ch.children && ch.children.length) ? false : true
-    let sourceBlockId = ch.blockId, source = ch.attrName ?? ch.function
+    let sourcePuzzleId = ch.puzzleId, source = ch.entityName ?? ch.function
     let headerDepth = depth + keyBias + topBias, keyDepth = headerDepth
     // let headerStyle = style_process(ch.style)
     let headerStyle = ch.style
@@ -627,7 +657,7 @@ const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: nu
       let keyData = {
         value: key, 
         source: '@__KEY',
-        sourceBlockId,
+        sourcePuzzleId,
         rowSpan: 1, colSpan: 1,
         isUsed: false,
         isLeaf,
@@ -636,7 +666,7 @@ const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: nu
         style: headerStyle
       }
       if(source) extra.preVal[source] = ch.values[i]
-      if(!get_cell_head_is_valid(extra.preVal, extra.data) && ch.attrName) {
+      if(!get_cell_head_is_valid(extra.preVal, extra.data) && ch.entityName) {
         delete extra.preVal[source]
         continue
       }
@@ -657,7 +687,7 @@ const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: nu
         interColumnTable[headerDepth][innerY+outerY+bias] = {
           value: headValue,
           source,
-          sourceBlockId,
+          sourcePuzzleId,
           rowSpan: span, colSpan: 1,
           isUsed: false, 
           isLeaf,
@@ -674,7 +704,7 @@ const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: nu
           interColumnTable[headerDepth][innerY+outerY+j+bias] = {
             value: headValue,
             source,
-            sourceBlockId,
+            sourcePuzzleId,
             rowSpan: span, colSpan: cs,
             isUsed: false,
             isLeaf,
@@ -687,26 +717,26 @@ const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: nu
       // process cell unit
       if(!extra.notSearchCell && isLeaf) {
         for(let c of extra.cell) {
-          if(c.colParentId === ch.blockId) {
+          if(c.colParentId === ch.puzzleId) {
             // let cellStyle = style_process(c.style)
             let cellStyle = c.style
             // process function cell
             if(ch.function) {
-              if(!agg_type_check(extra.attrInfo, c.attrName)) throw new Error("Function can only be used to numerical>")
+              if(!agg_type_check(extra.attrInfo, c.entityName)) throw new Error("Function can only be used to numerical>")
               delete extra.preVal[source]
               extra.cellTable[innerY+outerY+bias].push({
-                value: aggregate_use(extra.preVal, extra.data, c.attrName, extra.valDict, FUNC_SUM),
-                source: c.attrName,
-                sourceBlockId: c.blockId,
+                value: aggregate_use(extra.preVal, extra.data, c.entityName, extra.valDict, FUNC_SUM),
+                source: c.entityName,
+                sourcePuzzleId: c.puzzleId,
                 type: BlockType.CELL,
                 style: cellStyle
               }) 
             // Process attr cell
             } else {
               extra.cellTable[innerY+outerY+bias].push({
-                value: get_cell_val(extra.preVal, extra.data, c.attrName),
-                source: c.attrName,
-                sourceBlockId: c.blockId,
+                value: get_cell_val(extra.preVal, extra.data, c.entityName),
+                source: c.entityName,
+                sourcePuzzleId: c.puzzleId,
                 type: BlockType.CELL,
                 style: cellStyle
               }) 
@@ -719,7 +749,7 @@ const gen_inter_column_table = (interColumnTable, columnHeader, extra, width: nu
         extra.valIdx.push({
             idx: innerY+outerY+bias,
             preVal: Object.assign({}, extra.preVal),
-            blockId: ch.blockId,
+            puzzleId: ch.puzzleId,
             isAgg: ch.function ? true : false
           })
       }
@@ -737,26 +767,26 @@ const gen_inter_cross_table = (interCrossTable, rowExtra, colExtra, cell, valDic
   for(let i=0; i<rowValIdx.length; i++) {
     for(let j=0; j<colValIdx.length; j++) {
       for(let c of cell) {
-        if(c.rowParentId === rowValIdx[i].blockId && c.colParentId === colValIdx[j].blockId) {
+        if(c.rowParentId === rowValIdx[i].puzzleId && c.colParentId === colValIdx[j].puzzleId) {
           // let cellStyle = style_process(c.style)
           let cellStyle = c.style
           let x = rowValIdx[i].idx, y = colValIdx[j].idx
           if(rowValIdx[i].isAgg || colValIdx[j].isAgg) {
-            if(!agg_type_check(rowExtra.attrInfo, c.attrName)) throw new Error("Function can only be used to numerical>")
+            if(!agg_type_check(rowExtra.attrInfo, c.entityName)) throw new Error("Function can only be used to numerical>")
             interCrossTable[x][y] = {
               value: aggregate_use({...rowValIdx[i].preVal, ...colValIdx[j].preVal}, rowExtra.data, 
-                c.attrName, valDict, FUNC_SUM),
-              // source: c.attrName,
-              sourceBlockId: c.blockId,
+                c.entityName, valDict, FUNC_SUM),
+              // source: c.entityName,
+              sourcePuzzleId: c.puzzleId,
               rowSpan: 1, colSpan: 1,
               type: BlockType.CELL,
               style: cellStyle
             }
           } else {
             interCrossTable[x][y] = {
-              value: get_cell_val({...rowValIdx[i].preVal, ...colValIdx[j].preVal}, rowExtra.data, c.attrName),
-              // source: c.attrName,
-              sourceBlockId: c.blockId,
+              value: get_cell_val({...rowValIdx[i].preVal, ...colValIdx[j].preVal}, rowExtra.data, c.entityName),
+              // source: c.entityName,
+              sourcePuzzleId: c.puzzleId,
               rowSpan: 1, colSpan: 1,
               type: BlockType.CELL,
               style: cellStyle
@@ -779,7 +809,7 @@ const gen_blank_facet_table = (rawTable, header, info, depth, outerX,
   for(let hb of header) {
     let start = innerX + outerX + bias, subFacetSpan = 0
     let nowBeforeBias = 0, nowAfterBias = 0
-    let source = hb.attrName ?? hb.function, pos = 0
+    let source = hb.entityName ?? hb.function, pos = 0
     let eachIterCount = new Array()
     if(hb.key) {
       if(info.tbClass === ROW_TABLE) {
@@ -794,7 +824,7 @@ const gen_blank_facet_table = (rawTable, header, info, depth, outerX,
       let iterCount = 1, len = info.cellLength, tmpFacetSpan = 1, blank = 0
       let x = innerX + outerX + bias, y = depth + keyBias
       if(source) info.preVal[source] = hb.values[i]
-      if(!get_cell_head_is_valid(info.preVal, info.data) && hb.attrName) {
+      if(!get_cell_head_is_valid(info.preVal, info.data) && hb.entityName) {
         delete info.preVal[source]
         continue
       }
@@ -825,7 +855,7 @@ const gen_blank_facet_table = (rawTable, header, info, depth, outerX,
             if(nowAfterBias > 0) rawTable[x+j][y+beforeBias+afterBias].colSpan = tmpFacetSpan + blank
           }          
         }
-        if(rawTable[x+j][y+beforeBias] !== undefined && j===0 && hb.blankLine && pos%hb.facet===0) {
+        if(rawTable[x+j][y+beforeBias] !== undefined && j===0 && hb.blankLine && pos%hb.division===0) {
           if(beforeBias > 0) {
             rawTable[x+j][y].hasBlank = true
             rawTable[x+j][y].blankLen = {len: len - y, y, maxLen: hbLen}
@@ -836,11 +866,11 @@ const gen_blank_facet_table = (rawTable, header, info, depth, outerX,
           }
         }
       }
-      if(hb.facet > 1) {
+      if(hb.division > 1) {
         let copyLen = len - y
-        let group = pos % hb.facet
+        let group = pos % hb.division
         let preX = 0
-        for(let j=0; j<Math.floor(pos/hb.facet); j++) preX += eachIterCount[j]
+        for(let j=0; j<Math.floor(pos/hb.division); j++) preX += eachIterCount[j]
         for(let j=0; j<iterCount; j++) {
           for(let k=0; k<copyLen; k++) {
             let tarX = start + preX + j, tarY = y + k + group*copyLen
@@ -857,7 +887,7 @@ const gen_blank_facet_table = (rawTable, header, info, depth, outerX,
             }
           }
         }
-        let delta = (hb.facet-1) * copyLen
+        let delta = (hb.division-1) * copyLen
         len += delta
       }
 
@@ -867,9 +897,9 @@ const gen_blank_facet_table = (rawTable, header, info, depth, outerX,
       if(maxLen < len) maxLen = len, hbLen.val = len
       subFacetSpan += tmpFacetSpan
     }
-    if(hb.facet>1) subFacetSpan = Math.ceil(subFacetSpan / hb.facet)
+    if(hb.division>1) subFacetSpan = Math.ceil(subFacetSpan / hb.division)
     facetSpan += subFacetSpan
-    if(hb.blankLine) blankLine += Math.ceil(pos / hb.facet)
+    if(hb.blankLine) blankLine += Math.ceil(pos / hb.division)
   }
   let delta1 = isPreMerge ? 1 : 0
   return [innerX+delta1, maxLen, facetSpan+delta1, blankLine]
@@ -991,7 +1021,7 @@ const gen_valid_value_table = (table, tableClass, data, idDict) => {
 
   for(let i=0; i<table.length; i++) {
     for(let j=0; j<table[i].length; j++) {
-      let tmp = table[i][j], loc = new Array(), id = tmp.sourceBlockId, fixJ = j
+      let tmp = table[i][j], loc = new Array(), id = tmp.sourcePuzzleId, fixJ = j
       while(useRecord[i][fixJ]) fixJ++
       if(id) {
         if(idDict.rowDict[id]) idDict.rowDict[id].locList.push(i)
@@ -1016,14 +1046,14 @@ const gen_valid_value_table = (table, tableClass, data, idDict) => {
       let lastBlank = -1,  lastBId = ""
       let headSet = {}, keyList = new Array(), isHeadValid = false
       for(let j=0; j<rowLen; j++) {
-        let tmp = vvTable[i][j], id = tmp.sourceBlockId
+        let tmp = vvTable[i][j], id = tmp.sourcePuzzleId
         if(id && idDict.rowDict[id]) {
           hasHeader = true
-          if(idDict.rowDict[id].attrName) {
-            if(headSet[idDict.rowDict[id].attrName]) {
+          if(idDict.rowDict[id].entityName) {
+            if(headSet[idDict.rowDict[id].entityName]) {
               if(get_cell_head_is_valid(headSet, data)) isHeadValid = true
               let tmpKey = keyList.pop()
-              while(tmpKey !== idDict.rowDict[id].attrName) {
+              while(tmpKey !== idDict.rowDict[id].entityName) {
                 delete headSet[tmpKey]
                 tmpKey = keyList.pop()
               }
@@ -1031,8 +1061,8 @@ const gen_valid_value_table = (table, tableClass, data, idDict) => {
             let value = tmp.value
             if(idDict.rowDict[id].key && idDict.rowDict[id].key.position===Position.EMBEDDED)
               value = tmp.value.split(" ").pop()
-            headSet[idDict.rowDict[id].attrName] = value
-            keyList.push(idDict.rowDict[id].attrName)
+            headSet[idDict.rowDict[id].entityName] = value
+            keyList.push(idDict.rowDict[id].entityName)
           }
           if(idDict.rowDict[id].hasBlank) {
             hasBlank = true
@@ -1070,14 +1100,14 @@ const gen_valid_value_table = (table, tableClass, data, idDict) => {
       let lastBlank = -1,  lastBId = ""
       let headSet = {}, keyList = new Array(), isHeadValid = false
       for(let i=0; i<vvTable.length; i++) {
-        let tmp = vvTable[i][j], id = tmp.sourceBlockId
+        let tmp = vvTable[i][j], id = tmp.sourcePuzzleId
         if(id && idDict.colDict[id]) {
           hasHeader = true 
-          if(idDict.colDict[id].attrName) {
-            if(headSet[idDict.colDict[id].attrName]) {
+          if(idDict.colDict[id].entityName) {
+            if(headSet[idDict.colDict[id].entityName]) {
               if(get_cell_head_is_valid(headSet, data)) isHeadValid = true
               let tmpKey = keyList.pop()
-              while(tmpKey !== idDict.colDict[id].attrName) {
+              while(tmpKey !== idDict.colDict[id].entityName) {
                 delete headSet[tmpKey]
                 tmpKey = keyList.pop()
               }
@@ -1085,8 +1115,8 @@ const gen_valid_value_table = (table, tableClass, data, idDict) => {
             let value = tmp.value
             if(idDict.colDict[id].key && idDict.colDict[id].key.position===Position.EMBEDDED)
               value = tmp.value.split(" ").pop()
-            headSet[idDict.colDict[id].attrName] = value
-            keyList.push(idDict.colDict[id].attrName)
+            headSet[idDict.colDict[id].entityName] = value
+            keyList.push(idDict.colDict[id].entityName)
           }
           if(idDict.colDict[id].hasBlank) {
             hasBlank = true
@@ -1124,7 +1154,7 @@ const gen_valid_value_table = (table, tableClass, data, idDict) => {
   for(let i=0; i<vvTable.length; i++) {
     if(!retTable[pos]) retTable[pos] = new Array()
     for(let j=0; j<rowLen; j++) {
-      let tmp = vvTable[i][j], id = tmp.sourceBlockId
+      let tmp = vvTable[i][j], id = tmp.sourcePuzzleId
       let mergeType = GridMerge.Merged
       let isRowHeader = (id && idDict.rowDict[id]) ? true : false
       let isColHeader = (id && idDict.colDict[id]) ? true : false
@@ -1135,7 +1165,7 @@ const gen_valid_value_table = (table, tableClass, data, idDict) => {
       if(tmp.isSkip) continue
       retTable[pos].push({
         value: tmp.value, 
-        sourceBlockId: tmp.sourceBlockId,
+        sourcePuzzleId: tmp.sourcePuzzleId,
         rowSpan: rs, 
         colSpan: cs,
         type: tmp.type,
@@ -1167,7 +1197,7 @@ const gen_grid_merged_table = (table, idDict) => {
 
   for(let i=0; i<table.length; i++) {
     for(let j=0; j<table[i].length; j++) {
-      let tmp = table[i][j], loc = new Array(), id = tmp.sourceBlockId, fixJ = j
+      let tmp = table[i][j], loc = new Array(), id = tmp.sourcePuzzleId, fixJ = j
       while(useRecord[i][fixJ]) fixJ++
       if(id) {
         if(idDict.rowDict[id]) idDict.rowDict[id].locList.push(i)
@@ -1192,7 +1222,7 @@ const gen_grid_merged_table = (table, idDict) => {
   for(let i=0; i<vvTable.length; i++) {
     if(!retTable[pos]) retTable[pos] = new Array()
     for(let j=0; j<rowLen; j++) {
-      let tmp = vvTable[i][j], id = tmp.sourceBlockId
+      let tmp = vvTable[i][j], id = tmp.sourcePuzzleId
       let mergeType = GridMerge.Merged
       let isRowHeader = (id && idDict.rowDict[id]) ? true : false
       let isColHeader = (id && idDict.colDict[id]) ? true : false
@@ -1203,7 +1233,7 @@ const gen_grid_merged_table = (table, idDict) => {
       if(tmp.isSkip) continue
       retTable[pos].push({
         value: tmp.value, 
-        sourceBlockId: tmp.sourceBlockId,
+        sourcePuzzleId: tmp.sourcePuzzleId,
         rowSpan: rs, 
         colSpan: cs,
         type: tmp.type,
@@ -1251,14 +1281,14 @@ const gen_facet_ME_table = (table, tbClass, idDict) => {
   for(let i=0; i<formatTable.length; i++) {
     for(let j=0; j<formatTable[i].length; j++) {
       let tmp = formatTable[i][j]
-      let value = tmp.value, id = tmp.sourceBlockId
+      let value = tmp.value, id = tmp.sourcePuzzleId
       if(tbClass === ROW_TABLE) {
         let bias = tmp.rowSpan
         if(!tmp.skip && id) {
           let rInfo = idDict.rowDict[id]
           if(rInfo && rInfo.facetMerge && rInfo.gridMerge!=GridMerge.UnmergedAll) {
             while(i+bias<formatTable.length && value===formatTable[i+bias][j].value && 
-              id===formatTable[i+bias][j].sourceBlockId) {
+              id===formatTable[i+bias][j].sourcePuzzleId) {
               tmp.rowSpan += formatTable[i+bias][j].rowSpan
               for(let k=0; k<formatTable[i+bias][j].rowSpan; k++)
                 formatTable[i+bias+k][j].isSkip = true
@@ -1281,7 +1311,7 @@ const gen_facet_ME_table = (table, tbClass, idDict) => {
           let cInfo = idDict.colDict[id]
           if(cInfo && cInfo.facetMerge && cInfo.gridMerge!=GridMerge.UnmergedAll) {
             while(j+bias<formatTable[i].length && value===formatTable[i][j+bias].value && 
-              id===formatTable[i][j+bias].sourceBlockId) {
+              id===formatTable[i][j+bias].sourcePuzzleId) {
               tmp.colSpan += formatTable[i][j+bias].colSpan
               for(let k=0; k<formatTable[i][j+bias].colSpan; k++)
                 formatTable[i][j+bias+k].isSkip = true
@@ -1326,7 +1356,7 @@ const gen_styled_table = (table, styles, idDict) => {
   for(let i=0; i<table.length; i++) {
     retTable[i] = new Array()
     for(let j=0; j<table[i].length; j++) {
-      let tmp = {...table[i][j]}, id = tmp.sourceBlockId, fixJ = j
+      let tmp = {...table[i][j]}, id = tmp.sourcePuzzleId, fixJ = j
       while(useRecord[i][fixJ]) fixJ++
       let loc = {x: i+1, y: fixJ+1}
       if(i===0 && fixJ===0 && tmp.value===undefined 
@@ -1371,8 +1401,8 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
   let colDepth = calc_head_depth(columnHeader);
   // let rowSize = calc_head_size(rowHeader);
   // let colSize = calc_head_size(columnHeader);
-  let rowSize = calc_head_size2(rowHeader, data.values);
-  let colSize = calc_head_size2(columnHeader, data.values);
+  let rowSize = calc_head_size2(rowHeader, data);
+  let colSize = calc_head_size2(columnHeader, data);
 
   if(tbClass == ROW_TABLE) {
     let headTmpSpan = Array.from({length: rowDepth}, () => ({}))
@@ -1398,10 +1428,10 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
     }
     console.log("head key span", headKeySpan);
     let valDict = {}
-    for(let d of Object.values(idDict.rowDict) as any) if(d.attrName) valDict[d.attrName] = d.values
+    for(let d of Object.values(idDict.rowDict) as any) if(d.entityName) valDict[d.entityName] = d.values
     let extra = {
       preVal: {},
-      data: data.values,
+      data,
       cell, 
       cellTable: Array.from({length: rowSize}, () => new Array()),
       attrInfo,
@@ -1431,7 +1461,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
           processTable[i].push({
             value: tmp.value, 
             // source: tmp.source,
-            sourceBlockId: tmp.sourceBlockId,
+            sourcePuzzleId: tmp.sourcePuzzleId,
             rowSpan: tmp.rowSpan, 
             colSpan: tmp.colSpan,
             type: tmp.type,
@@ -1441,7 +1471,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
           processTable[i].push({
             value: tmp.value, 
             // source: tmp.source,
-            sourceBlockId: tmp.sourceBlockId,
+            sourcePuzzleId: tmp.sourcePuzzleId,
             rowSpan: 1, 
             colSpan: headKeySpan[j],
             type: tmp.type,
@@ -1457,7 +1487,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
         processTable[i].push({
           value: c.value,
           // source: c.source,
-          sourceBlockId: c.sourceBlockId,
+          sourcePuzzleId: c.sourcePuzzleId,
           rowSpan: 1,
           colSpan: 1,
           type: c.type,
@@ -1472,7 +1502,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
       for(let j=0; j<resLength; j++) processTable[i].push({
           value: undefined,
           // source: undefined,
-          sourceBlockId: undefined,
+          sourcePuzzleId: undefined,
           rowSpan: 1,
           colSpan: 1,
           type: undefined,
@@ -1484,7 +1514,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
       layersBias,
       cellLength: maxLength + rowDepth,
       tbClass,
-      data: data.values,
+      data,
       preVal: {},
       // oldTable: JSON.parse(JSON.stringify(processTable))
     }
@@ -1517,10 +1547,10 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
     }
     console.log("head key span", headKeySpan);
     let valDict = {}
-    for(let d of Object.values(idDict.colDict) as any) if(d.attrName) valDict[d.attrName] = d.values
+    for(let d of Object.values(idDict.colDict) as any) if(d.entityName) valDict[d.entityName] = d.values
     let extra = {
       preVal: {},
-      data: data.values,
+      data,
       cell, 
       cellTable: Array.from({length: colSize}, () => new Array()),
       attrInfo,
@@ -1552,7 +1582,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
           processTable[j].push({
             value: tmp.value, 
             // source: tmp.source,
-            sourceBlockId: tmp.sourceBlockId,
+            sourcePuzzleId: tmp.sourcePuzzleId,
             rowSpan: tmp.rowSpan, 
             colSpan: tmp.colSpan,
             type: tmp.type,
@@ -1562,7 +1592,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
           processTable[j].push({
             value: tmp.value, 
             // source: tmp.source,
-            sourceBlockId: tmp.sourceBlockId,
+            sourcePuzzleId: tmp.sourcePuzzleId,
             rowSpan: headKeySpan[i], 
             colSpan: 1,
             type: tmp.type,
@@ -1578,7 +1608,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
         processTable[j].push({
           value: c.value,
           // source: c.source,
-          sourceBlockId: c.sourceBlockId,
+          sourcePuzzleId: c.sourcePuzzleId,
           rowSpan: 1,
           colSpan: 1,
           type: c.type,
@@ -1593,7 +1623,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
       for(let j=0; j<resLength; j++) processTable[i].push({
           value: undefined,
           // source: undefined,
-          sourceBlockId: undefined,
+          sourcePuzzleId: undefined,
           rowSpan: 1,
           colSpan: 1,
           type: undefined,
@@ -1605,7 +1635,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
       layersBias,
       cellLength: maxLength + colDepth,
       tbClass,
-      data: data.values,
+      data,
       preVal: {},
       // oldTable: JSON.parse(JSON.stringify(processTable))
     }
@@ -1640,7 +1670,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
     console.log("head key row span", headKeyRowSpan);
     let rowExtra = {
       preVal: {},
-      data: data.values,
+      data,
       cell, 
       cellTable: Array.from({length: rowSize}, () => new Array()),
       attrInfo,
@@ -1675,7 +1705,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
     console.log("head key col span", headKeyColSpan);
     let colExtra = {
       preVal: {},
-      data: data.values,
+      data,
       cell, 
       cellTable: Array.from({length: rowSize}, () => new Array()),
       attrInfo,
@@ -1693,8 +1723,8 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
     gen_inter_column_table(interTable, columnHeader, colExtra, colSize, 0, 0, rowDepth)
 
     let valDict = {}
-    for(let d of Object.values(idDict.rowDict) as any) if(d.attrName) valDict[d.attrName] = d.values
-    for(let d of Object.values(idDict.colDict) as any) if(d.attrName) valDict[d.attrName] = d.values
+    for(let d of Object.values(idDict.rowDict) as any) if(d.entityName) valDict[d.entityName] = d.values
+    for(let d of Object.values(idDict.colDict) as any) if(d.entityName) valDict[d.entityName] = d.values
     gen_inter_cross_table(interTable, rowExtra, colExtra, cell, valDict)
     // console.log('@', interTable)
 
@@ -1729,7 +1759,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
             rowProcess[i][j] = {
               value: tmp.value, 
               // source: tmp.source,
-              sourceBlockId: tmp.sourceBlockId,
+              sourcePuzzleId: tmp.sourcePuzzleId,
               rowSpan: tmp.rowSpan, 
               colSpan: tmp.colSpan,
               type: tmp.type,
@@ -1739,7 +1769,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
             rowProcess[i][j] = {
               value: tmp.value, 
               // source: tmp.source,
-              sourceBlockId: tmp.sourceBlockId,
+              sourcePuzzleId: tmp.sourcePuzzleId,
               rowSpan: 1, 
               colSpan: headKeyRowSpan[j],
               type: tmp.type,
@@ -1757,7 +1787,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
         layersBias: layersRowBias,
         cellLength: crossDepth,
         tbClass: ROW_TABLE,
-        data: data.values,
+        data,
         preVal: {},
       }
       gen_blank_facet_table(rowProcTrans, rowHeader, rowInfo, 0, 0)
@@ -1802,7 +1832,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
             colProcess[j].push({
               value: tmp.value, 
               // source: tmp.source,
-              sourceBlockId: tmp.sourceBlockId,
+              sourcePuzzleId: tmp.sourcePuzzleId,
               rowSpan: tmp.rowSpan, 
               colSpan: tmp.colSpan,
               type: tmp.type,
@@ -1812,7 +1842,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
             colProcess[j].push({
               value: tmp.value, 
               // source: tmp.source,
-              sourceBlockId: tmp.sourceBlockId,
+              sourcePuzzleId: tmp.sourcePuzzleId,
               rowSpan: headKeyColSpan[i], 
               colSpan: 1,
               type: tmp.type,
@@ -1831,7 +1861,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
         layersBias: layersColBias,
         cellLength: maxLength,
         tbClass: COLUM_TABLE,
-        data: data.values,
+        data,
         preVal: {},
         alignHeader: rowPart,
       }
@@ -1856,7 +1886,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
       for(let i=0; i<rowDepth; i++) cs += headKeyRowSpan[i]
       finalTable[0].unshift({
         value: undefined as any, 
-        sourceBlockId: undefined as any,
+        sourcePuzzleId: undefined as any,
         rowSpan: rs, colSpan: cs,
         type: BlockType.TITLE,
         style: undefined as any
@@ -1892,7 +1922,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
             colProcess[i][j] = {
               value: tmp.value, 
               // source: tmp.source,
-              sourceBlockId: tmp.sourceBlockId,
+              sourcePuzzleId: tmp.sourcePuzzleId,
               rowSpan: tmp.rowSpan, 
               colSpan: tmp.colSpan,
               type: tmp.type,
@@ -1902,7 +1932,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
             colProcess[i][j] = {
               value: tmp.value, 
               // source: tmp.source,
-              sourceBlockId: tmp.sourceBlockId,
+              sourcePuzzleId: tmp.sourcePuzzleId,
               rowSpan: headKeyColSpan[i], 
               colSpan: 1,
               type: tmp.type,
@@ -1920,7 +1950,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
         layersBias: layersColBias,
         cellLength: crossSize,
         tbClass: COLUM_TABLE,
-        data: data.values,
+        data,
         preVal: {},
       }
       gen_blank_facet_table(colProcTrans, columnHeader, colInfo, 0, 0)
@@ -1965,7 +1995,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
             rowProcess[i].push({
               value: tmp.value, 
               // source: tmp.source,
-              sourceBlockId: tmp.sourceBlockId,
+              sourcePuzzleId: tmp.sourcePuzzleId,
               rowSpan: tmp.rowSpan, 
               colSpan: tmp.colSpan,
               type: tmp.type,
@@ -1975,7 +2005,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
             rowProcess[i].push({
               value: tmp.value, 
               // source: tmp.source,
-              sourceBlockId: tmp.sourceBlockId,
+              sourcePuzzleId: tmp.sourcePuzzleId,
               rowSpan: 1, 
               colSpan: headKeyRowSpan[j],
               type: tmp.type,
@@ -1994,7 +2024,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
         layersBias: layersRowBias,
         cellLength: maxLength,
         tbClass: ROW_TABLE,
-        data: data.values,
+        data,
         preVal: {},
         alignHeader: colPart,
       }
@@ -2017,7 +2047,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
       for(let i=0; i<rowDepth; i++) cs += headKeyRowSpan[i]
       finalTable[0].unshift({
         value: undefined as any, 
-        sourceBlockId: undefined as any,
+        sourcePuzzleId: undefined as any,
         rowSpan: rs, colSpan: cs,
         type: BlockType.TITLE,
         style: undefined as any
@@ -2026,7 +2056,7 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
     }
   }
 
-  // finalTable = gen_valid_value_table(finalTable, tbClass, data.values, idDict)
+  // finalTable = gen_valid_value_table(finalTable, tbClass, data, idDict)
   finalTable = gen_grid_merged_table(finalTable, idDict)
   let actTBClass = tbClass
   if(tbClass === CROSS_TABLE) {
@@ -2042,15 +2072,15 @@ const table_process = (tbClass:string, data, {rowHeader, columnHeader, cell, att
 }
 
 const transform = (task: Spec) => {
-  let { data, spec } = task;
+  let { metaData: data, ...spec } = task;
   try {
-    spec_init({data, spec})
+    spec_init(task)
   }
   catch(err) {
     console.log('Warning:', err.message);
     return new Array()
   }
-  let { rowHeader, columnHeader, cell, styles, attrInfo } = spec
+  let { rowHeader, columnHeader, cell, globalStyle: styles, attrInfo } = spec
   
   // check table class
   let tableClass = ""
@@ -2099,12 +2129,12 @@ const table2excel = ({table, url}) => {
 const fill_header_spec = (val, extra, name="entity", depth=0) => {
   if(val[depth]===undefined) return undefined
   let spec = {
-    attrName: `${name}${depth+1}`,
-    blockId: genBid(),
+    entityName: `${name}${depth+1}`,
+    puzzleId: genBid(),
     values: new Array(),
     children: new Array()
   }
-  extra.pId = spec.blockId
+  extra.pId = spec.puzzleId
   for(let v in val[depth]) spec.values.push(v)
   let cSpec = fill_header_spec(val, extra, name, depth+1)
   if(cSpec !== undefined) spec.children.push(cSpec)
@@ -2180,8 +2210,8 @@ const parseTable = async (file: ArrayBuffer, mode: string) => {
     if(rh !== undefined) spec.rowHeader.push(rh)
     if(ch !== undefined) spec.columnHeader.push(ch)
     let c = {
-      attrName: "cell1",
-      blockId: genBid(),
+      entityName: "cell1",
+      puzzleId: genBid(),
       rowParentId: extraR.pId,
       colParentId: extraC.pId,
       dataType: DataType.CATEGORICAL,
@@ -2195,14 +2225,14 @@ const parseTable = async (file: ArrayBuffer, mode: string) => {
           c.values.push(Number(data[i][j]))
           for(let k=0; k<rowDepth; k++) tmp[`rowEntity${k+1}`] = data[i][k]
           for(let k=0; k<colDepth; k++) tmp[`colEntity${k+1}`] = data[k][j]
-          tmp[c.attrName] = Number(data[i][j])
+          tmp[c.entityName] = Number(data[i][j])
           spec.data.push(tmp)
         } else {
           if(data[i][j]) {
             c.values.push(data[i][j])
             for(let k=0; k<rowDepth; k++) tmp[`rowEntity${k+1}`] = data[i][k]
             for(let k=0; k<colDepth; k++) tmp[`colEntity${k+1}`] = data[k][j]
-            tmp[c.attrName] = data[i][j]
+            tmp[c.entityName] = data[i][j]
             spec.data.push(tmp)
           }
         }
@@ -2266,8 +2296,8 @@ const parseTable = async (file: ArrayBuffer, mode: string) => {
     
     for(let j=rowDepth; j<cLen; j++) {
       let c = {
-        attrName: `cell${j+1-rowDepth}`,
-        blockId: genBid(),
+        entityName: `cell${j+1-rowDepth}`,
+        puzzleId: genBid(),
         rowParentId: extraR.pId,
         colParentId: extraC.pId,
         dataType: DataType.CATEGORICAL,
@@ -2280,14 +2310,14 @@ const parseTable = async (file: ArrayBuffer, mode: string) => {
           c.values.push(Number(data[i][j]))
           for(let k=0; k<rowDepth; k++) tmp[`rowEntity${k+1}`] = data[i][k]
           for(let k=0; k<colDepth; k++) tmp[`colEntity${k+1}`] = data[k][j]
-          tmp[c.attrName] = Number(data[i][j])
+          tmp[c.entityName] = Number(data[i][j])
           spec.data.push(tmp)
         } else {
           if(data[i][j]) {
             c.values.push(data[i][j])
             for(let k=0; k<rowDepth; k++) tmp[`rowEntity${k+1}`] = data[i][k]
             for(let k=0; k<colDepth; k++) tmp[`colEntity${k+1}`] = data[k][j]
-            tmp[c.attrName] = data[i][j]
+            tmp[c.entityName] = data[i][j]
             spec.data.push(tmp)
           }
         }

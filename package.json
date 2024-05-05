@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "start": "yarn run build && yarn run test",
-    "test": "node example/test5.js",
+    "test": "node example/test_new.js",
     "build": "rollup --config",
     "release": "rollup -i src/index.ts -o release/tableshop.js -p node-resolve -p typescript",
     "debug": "npm run build && npm run test"
