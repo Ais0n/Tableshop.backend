@@ -22447,6 +22447,11 @@ var header_fill = function (attrInfo, styles, header) {
                 hb.key = undefined;
             if (hb.title === "")
                 hb.title = hb.entityName;
+            if (hb.puzzleStyle && Object.keys(hb.puzzleStyle).length !== 0) {
+                var ps = hb.puzzleStyle;
+                if (ps.style && Object.keys(ps.style).length !== 0)
+                    hb.style = ps.style;
+            }
             var headerStyle = hb.className ? deepAssign({}, styles[hb.className]) : {};
             if (!hb.style || Object.keys(hb.style).length === 0)
                 hb.style = {};
@@ -22498,6 +22503,11 @@ var spec_init = function (task) {
         }
         for (var _b = 0, cell_1 = cell; _b < cell_1.length; _b++) {
             var c = cell_1[_b];
+            if (c.puzzleStyle && Object.keys(c.puzzleStyle).length !== 0) {
+                var ps = c.puzzleStyle;
+                if (ps.style && Object.keys(ps.style).length !== 0)
+                    c.style = ps.style;
+            }
             var cellStyle = c.className ? deepAssign({}, styles[c.className]) : {};
             if (!c.style || Object.keys(c.style).length === 0)
                 c.style = {};
@@ -22508,7 +22518,7 @@ var spec_init = function (task) {
 // process style to css format
 var style_process = function (style) {
     var output = {};
-    var border = style.border, font = style.font, background = style.background, indent = style.indent;
+    var border = style.border, font = style.font, backgroundColor = style.backgroundColor, indent = style.indent;
     // Border
     if (border) {
         var positionKey = "", bdFormat = new Array();
@@ -22543,16 +22553,16 @@ var style_process = function (style) {
     }
     // Font
     if (font) {
-        if (font.color)
-            output['color'] = font.color;
-        if (font.size)
-            output['font-size'] = font.size + "px";
-        if (font.weight) {
-            if (font.weight === FontWeight.REGULAR)
+        if (font.fontColor)
+            output['color'] = font.fontColor;
+        if (font.fontSize)
+            output['font-size'] = font.fontSize + "px";
+        if (font.fontWeight) {
+            if (font.fontWeight === FontWeight.REGULAR)
                 output['font-family'] = "Inter-Regular-9";
-            else if (font.weight === FontWeight.BOLD)
+            else if (font.fontWeight === FontWeight.BOLD)
                 output['font-family'] = "Inter-Bold-4";
-            else if (font.weight === FontWeight.SEMIBOLD)
+            else if (font.fontWeight === FontWeight.SEMIBOLD)
                 output['font-family'] = "Inter-Medium-8";
         }
         if (font.underscore === FontUnderscore.Single)
@@ -22561,10 +22571,11 @@ var style_process = function (style) {
             output['text-decoration'] = "underline double";
     }
     // Background
-    if (background) {
-        if (background.color)
-            output['background-color'] = background.color;
-    }
+    // if(background) {
+    //   if(background.color) output['background-color'] = background.color
+    // }
+    if (backgroundColor)
+        output['background-color'] = backgroundColor;
     // Indent
     if (indent)
         output['padding-left'] = indent + "px";
