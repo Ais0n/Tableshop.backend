@@ -1,36 +1,29 @@
 import {
-  DataSource,
-  DataType,
-  DataSourceFormatEnum,
-  CSVArray,
-  JSONArray,
-  DataTableInterface,
-  DataTableAttribute,
-  DataTableTuple,
-  TargetTableSyntax,
-  TargetTableChannel,
-  TargetTableChannelUnit,
-  TargetTable
-} from "./data_source";
-
+  SourceTable, SingleTable,  
+  AttrInfoUnit, AttrInfo, DataType,
+  Key, KEY_ALPHABETIC, KEY_ROMAN, KEY_NUMERICAL, Pattern, Position,
+  GridMerge,
+  BorderPosition, BorderStyle, Border, FontUnderscore, FontWeight, Font, Background,
+  HeaderBlock, CellBlock, HeaderChannel, CellChannel, StyleClass,
+  FUNC_SUM
+} from "./data_source"
+import { CROSS_TABLE, ROW_TABLE, COLUM_TABLE, interCell, BlockType } from "./data_intermediate";
+import { SelectorType } from "./style_selector";
 
 interface Spec {
-  data: DataSource;
-  spec: TargetTableSyntax;
+  data: SourceTable;
+  spec: SingleTable;
 }
 
 export {
-  Spec,
-  DataType,
-  DataSource,
-  DataSourceFormatEnum,
-  CSVArray,
-  JSONArray,
-  DataTableInterface,
-  DataTableAttribute,
-  DataTableTuple,
-  TargetTableSyntax,
-  TargetTableChannel,
-  TargetTableChannelUnit,
-  TargetTable
-};
+  Spec, SourceTable, SingleTable,
+  AttrInfoUnit, AttrInfo, DataType,
+  Key, KEY_ALPHABETIC, KEY_ROMAN, KEY_NUMERICAL, Pattern, Position, 
+  GridMerge,
+  BorderPosition, BorderStyle, Border, FontUnderscore, FontWeight, Font, Background,
+  HeaderBlock, CellBlock, HeaderChannel, CellChannel, StyleClass,
+  FUNC_SUM,
+  CROSS_TABLE, ROW_TABLE, COLUM_TABLE, 
+  interCell, BlockType,
+  SelectorType
+}

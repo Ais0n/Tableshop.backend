@@ -1,12 +1,6 @@
-export interface DataSource {
-  name: string;
-  format?: DataSourceFormatEnum;
-  values?: CSVArray | JSONArray;
-}
-
-export enum DataSourceFormatEnum {
+enum SourceTableFormat {
   JSON = "json",
-  CSV = "csv",
+  CSV = "csv"
 }
 
 export enum DataType {
@@ -14,36 +8,151 @@ export enum DataType {
   NUMERICAL = "numerical"
 }
 
-export type CSVArray = any[][];
-export type JSONArray = object[];
+type CSVArray = any[][];
+type JSONArray = object[];
 
-export interface DataTableInterface {
+// Source Table
+export interface SourceTable {
   name: string;
-  attributes: DataTableAttribute[];
-  tuples: DataTableTuple[];
+  format?: SourceTableFormat;
+  values?: CSVArray | JSONArray;
 }
 
-export interface DataTableAttribute {
+// Specification
+
+// attr
+export interface AttrInfoUnit {
   name: string;
-  type: DataType;
+  dataType: DataType;
   values: string[] | number[];
 }
 
+export type AttrInfo = AttrInfoUnit[]
 
-export type DataTableTuple = any;
+// Block
+export const KEY_ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII']
+export const KEY_NUMERICAL = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12']
+export const KEY_ALPHABETIC = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L']
 
-export interface TargetTableSyntax {
-  rowHeader?: TargetTableChannel;
-  columnHeader?: TargetTableChannel;
-  cell?: TargetTableChannel;
+export enum Position {
+  EMBEDDED = "embedded",
+  LEFT = "left",
+  RIGHT = "right",
+  TOP = "top",
+  BOTTOM = "bottom"
 }
 
-export type TargetTableChannel = TargetTableChannelUnit[];
-
-export interface TargetTableChannelUnit {
-  attr: DataTableAttribute;
-  children?: TargetTableChannelUnit[];
+export enum Pattern {
+  ROMAN = "I",
+  NUMERICAL = "1",
+  ALPHABETIC = "A"
 }
 
-export type TargetTable = any[][];
+export enum GridMerge {
+  Merged = "merged",
+  UnmergedFirst = "unmerged-first",
+  UnmergedAll = "unmerged-all"
+}
 
+export enum BorderPosition {
+  ALL = "All",
+  TOP = "Top",
+  BOTTOM = "Bottom",
+  LEFT = "Left",
+  RIGHT = "Right"
+}
+
+export enum BorderStyle {
+  DOUBLE = "double",
+  SINGLE = "solid",
+  NONE = "none",
+}
+
+export enum FontUnderscore {
+  None = 0,
+  Single = 1,
+  Double = 2
+}
+
+export enum FontWeight {
+  REGULAR = "Regular",
+  BOLD = "Bold",
+  SEMIBOLD = "Semi Bold"
+}
+
+type Color = string
+
+export interface Key {
+  position: Position;
+  pattern: Pattern;
+  isInherited: boolean;
+}
+
+export interface Border {
+  color: Color;
+  width: number,
+  position: BorderPosition,
+  style: BorderStyle,
+}
+
+export interface Background {
+  color: Color
+}
+
+export interface Font {
+  size: number;
+  weight: FontWeight;
+  color: Color;
+  underscore?: FontUnderscore;
+}
+
+export interface HeaderBlock {
+  attrName: string | undefined; // link to AttrInfoUnit name
+  function: string | undefined; // can not exist with attrName
+  blockId: string;
+  className?: string;
+  key?: Key;
+  entityMerge?: boolean;
+  gridMerge?: GridMerge;
+  // expand?: boolean;
+  facet?: number;
+  facetMerge?: boolean,
+  facetEnd?: boolean,
+  title?: string,
+  blankLine?: boolean;
+  style?: StyleClass;
+  values?: string[] | number[];
+  children?: HeaderBlock[];
+}
+
+export interface CellBlock {
+  attrName: string;
+  blockId: string;
+  rowParentId?: string;
+  colParentId?: string;
+  className?: string;
+  style?: StyleClass; 
+}
+
+export type HeaderChannel = HeaderBlock[]
+export type CellChannel = CellBlock[]
+
+export interface StyleClass {
+  border?: Border;
+  background?: Background;
+  indent?: number;
+  font?: Font;
+}
+
+export interface SingleTable {
+  rowHeader?: HeaderChannel;
+  columnHeader?: HeaderChannel;
+  cell: CellChannel;
+  styles: {
+    [key: string]: StyleClass
+  };
+  attrInfo: AttrInfo; 
+}
+
+// function
+export const FUNC_SUM = "sum"
